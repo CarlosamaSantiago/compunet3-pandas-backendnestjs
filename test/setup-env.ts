@@ -1,0 +1,9 @@
+process.env.NODE_ENV = 'test';
+process.env.PORT = '3000';
+process.env.DB_HOST = process.env.DB_HOST ?? 'localhost';
+process.env.DB_PORT = process.env.DB_PORT ?? '5432';
+process.env.DB_USERNAME = process.env.DB_USERNAME ?? 'postgres';
+process.env.DB_PASSWORD = process.env.DB_PASSWORD ?? 'postgres';
+process.env.DB_DATABASE = process.env.DB_DATABASE ?? 'nest_backend';
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test_secret_only';
+process.env.JWT_EXPIRATION = process.env.JWT_EXPIRATION ?? '1h';

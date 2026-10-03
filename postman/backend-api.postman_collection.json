@@ -1,0 +1,23 @@
+{
+  "info": {
+    "_postman_id": "4a903570-8b1e-4dad-92a9-1bfeb19869d8",
+    "name": "Backend API",
+    "description": "Initial collection for the NestJS backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
