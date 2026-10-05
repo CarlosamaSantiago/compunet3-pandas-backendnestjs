@@ -3,11 +3,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 import { Role } from '../../../common/enums/role.enum';
+import { Task } from '../../tasks/entities/task.entity';
 
 @Entity('users')
 @Check('CHK_users_name_length', 'char_length("name") BETWEEN 2 AND 100')
@@ -29,6 +31,9 @@ export class User {
 
   @Column({ type: 'integer', default: 0 })
   tokenVersion!: number;
+
+  @OneToMany(() => Task, (task) => task.user)
+  tasks!: Task[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
