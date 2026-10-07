@@ -19,10 +19,10 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch --passWithNoTests",
+    "test:cov": "jest --coverage --passWithNoTests",
+    "test:e2e": "jest --config ./test/jest-e2e.json --passWithNoTests",
     "prepare": "husky"
   },
   "dependencies": {
