@@ -80,26 +80,34 @@
     }
   },
   "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s",
-      "!**/*.module.ts",
-      "!main.ts",
-      "!config/**",
-      "!database/**"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "rootDir": "src",
+  "testRegex": ".*\\.spec\\.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/../tsconfig.jest.json"
+      }
+    ]
   },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(@nestjs/jwt|@nestjs/passport)/)"
+  ],
+  "collectCoverageFrom": [
+    "**/*.(t|j)s",
+    "!**/*.module.ts",
+    "!main.ts",
+    "!config/**",
+    "!database/**"
+  ],
+  "coverageDirectory": "../coverage",
+  "testEnvironment": "node"
+},
   "allowScripts": {
     "bcrypt@6.0.0": true,
     "@parcel/watcher@2.6.0": true,
