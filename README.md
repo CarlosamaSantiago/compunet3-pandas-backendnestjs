@@ -1,125 +1,156 @@
-# Backend API
+# TaskFlow API
 
-A maintainable NestJS foundation for the Computación en Internet III backend workshop. This initial version deliberately contains infrastructure only: configuration, PostgreSQL connectivity, API documentation, a health endpoint, testing, and team automation.
+TaskFlow es una API REST para gestionar usuarios, autenticación JWT y tareas. Es el proyecto del taller Backend – NestJS de Computación en Internet III, Universidad Icesi.
 
-## Team
+## Equipo
 
-| Member | GitHub |
-|---|---|
-| Developer 1 | @username |
-| Developer 2 | @username |
-| Developer 3 | @username |
+Completar los nombres y perfiles antes de la entrega:
 
-## Tech Stack
+| Integrante | Responsabilidad                | Nombre                  | GitHub       |
+| ---------- | ------------------------------ | ----------------------- | ------------ |
+| 1          | Autenticación                  | `[Nombre integrante 1]` | `[@usuario]` |
+| 2          | Usuarios, roles y autorización | `[Nombre integrante 2]` | `[@usuario]` |
+| 3          | Tareas                         | `[Nombre integrante 3]` | `[@usuario]` |
 
-- Node.js 24 LTS, TypeScript, NestJS, and npm
-- PostgreSQL 17, TypeORM, and migration-ready persistence
-- Jest and Supertest
-- Swagger/OpenAPI and Postman
-- ESLint, Prettier, Husky, and GitHub Actions
+## Tecnologías
 
-## Requirements
+- Node.js 24 LTS (el paquete admite Node.js 22 o superior), TypeScript y NestJS 11.
+- PostgreSQL 17 y TypeORM 0.3.
+- JWT con Passport y bcrypt para autenticación.
+- Swagger/OpenAPI, Postman, Jest, ESLint y Prettier.
 
-- Node.js 24 LTS (Node.js 22 or newer is accepted by the package)
-- npm
-- Docker Desktop or another Docker Compose-compatible runtime
+## Requisitos
 
-## Installation
+- Node.js 22 o superior y npm.
+- Docker Desktop u otro runtime compatible con Docker Compose.
+- PostgreSQL puede ejecutarse mediante el Compose incluido.
+
+## Instalación y ejecución
+
+Desde la raíz del repositorio:
 
 ```bash
-npm install
+npm ci
 cp .env.example .env
-```
-
-On PowerShell, use `Copy-Item .env.example .env` for the second command. Replace development placeholders before using the project outside a local environment.
-
-## Environment Variables
-
-All supported variables are documented in `.env.example`. Startup validates database and future JWT settings with Joi and fails early when a required value is missing. `.env` and its variants are ignored by Git; only `.env.example` is committed.
-
-## Database
-
-TypeORM reads its connection exclusively from environment variables. `synchronize` and automatic migration execution are disabled. Future schema changes must be represented by migrations in `src/database/migrations`; repeatable seed orchestration belongs in `src/database/seeds`.
-
-Once entities exist, migrations can be managed with the standalone TypeORM data source:
-
-```bash
-npm run migration:generate -- src/database/migrations/DescribeChange
-npm run migration:run
-npm run migration:revert
-```
-
-## Running the Application
-
-Start PostgreSQL, then the API:
-
-```bash
 docker compose up -d
+npm run migration:run
 npm run start:dev
 ```
 
-- API health: <http://localhost:3000/api/health>
-- Swagger UI: <http://localhost:3000/api/docs>
+En PowerShell, reemplaza `cp .env.example .env` con `Copy-Item .env.example .env`. La API escucha en `http://localhost:3000` de forma predeterminada. Si el puerto local `5432` ya está ocupado, cambia `DB_PORT` en `.env` a un puerto libre, por ejemplo `5433`; Compose y la API leen ese mismo valor.
 
-The global `ValidationPipe` strips no data silently: it transforms valid DTO input, allows only declared properties, and rejects unexpected properties with `forbidNonWhitelisted`. This makes malformed client payloads visible during development and keeps the API contract strict.
+La ruta de salud es `GET /api/health`. Swagger está disponible en `http://localhost:3000/api/docs`.
 
-## Swagger
+## Variables de entorno
 
-Swagger uses the title **Backend API**, version **1.0**, and includes Bearer JWT support for the later authentication milestone. Controllers should use OpenAPI decorators as endpoints are added.
+`.env.example` contiene las variables soportadas. `src/config/env.validation.ts` valida el entorno al inicio:
 
-## Testing
+| Variable         | Uso                                    | Valor de ejemplo |
+| ---------------- | -------------------------------------- | ---------------- |
+| `NODE_ENV`       | Entorno de ejecución                   | `development`    |
+| `PORT`           | Puerto HTTP de Nest                    | `3000`           |
+| `DB_HOST`        | Host PostgreSQL                        | `localhost`      |
+| `DB_PORT`        | Puerto PostgreSQL publicado en el host | `5432`           |
+| `DB_USERNAME`    | Usuario PostgreSQL                     | `postgres`       |
+| `DB_PASSWORD`    | Contraseña PostgreSQL local            | `postgres`       |
+| `DB_DATABASE`    | Base de datos                          | `nest_backend`   |
+| `JWT_SECRET`     | Clave de firma JWT                     | `change_me`      |
+| `JWT_EXPIRATION` | Duración del token                     | `1h`             |
+
+`.env` está ignorado por Git. Los valores del ejemplo son únicamente para desarrollo local: reemplaza `JWT_SECRET` y las credenciales antes de cualquier despliegue y nunca publiques secretos reales.
+
+## Base de datos, migraciones y seed
+
+TypeORM obtiene conexión y entidades desde la configuración de Nest. `synchronize` y `migrationsRun` están desactivados; por lo tanto, arrancar la API **no crea ni actualiza automáticamente las tablas**. Las migraciones disponibles en `src/database/migrations` crean `users` y luego `tasks`; la migración de tareas depende de que exista `users`.
+
+La migración de usuarios usa `uuid_generate_v4()`. En una instancia PostgreSQL nueva, asegúrate de que esté disponible la extensión `uuid-ossp` antes de aplicar migraciones:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+
+Comandos TypeORM:
 
 ```bash
-npm test
-npm run test:watch
-npm run test:e2e
-npm run test:cov
+npm run typeorm -- migration:show
+npm run migration:run
+npm run migration:revert
+npm run migration:generate -- src/database/migrations/DescribeChange
+```
+
+El script `npm run seed` crea `admin@taskflow.com` (ADMIN), `user1@taskflow.com` y `user2@taskflow.com` (USER), y seis tareas. Configura `SEED_ADMIN_PASSWORD` y `SEED_USER_PASSWORD` en `.env` antes de ejecutarlo; ambas requieren al menos ocho caracteres. Las contraseñas se guardan con bcrypt. Tras aplicar las migraciones, puedes repetir el seed: conserva los usuarios existentes y no duplica las tareas iniciales por propietario y título.
+
+## Endpoints
+
+Las rutas autenticadas requieren `Authorization: Bearer <accessToken>`. El rol se obtiene del usuario vigente cargado por Auth desde PostgreSQL.
+
+| Método y ruta               | Acceso      | Función                                                        |
+| --------------------------- | ----------- | -------------------------------------------------------------- |
+| `POST /api/auth/register`   | Público     | Registrar usuario `USER`.                                      |
+| `POST /api/auth/login`      | Público     | Obtener access token JWT.                                      |
+| `POST /api/auth/logout`     | Autenticado | Incrementar `tokenVersion` e invalidar el token.               |
+| `GET /api/users/me`         | Autenticado | Consultar el perfil propio.                                    |
+| `PATCH /api/users/me`       | Autenticado | Cambiar nombre y/o correo propios.                             |
+| `GET /api/users`            | `ADMIN`     | Listar usuarios con `page` y `limit` (máximo 100).             |
+| `PATCH /api/users/:id/role` | `ADMIN`     | Cambiar el rol; protege al último administrador.               |
+| `POST /api/tasks`           | Autenticado | Crear una tarea propia.                                        |
+| `GET /api/tasks`            | Autenticado | Listar tareas propias; permite filtrar por estado y prioridad. |
+| `GET /api/tasks/:id`        | Autenticado | Consultar una tarea propia.                                    |
+| `PATCH /api/tasks/:id`      | Autenticado | Actualizar una tarea propia.                                   |
+| `DELETE /api/tasks/:id`     | Autenticado | Eliminar una tarea propia.                                     |
+| `GET /api/admin/tasks`      | `ADMIN`     | Listar todas las tareas con propietario.                       |
+| `GET /api/health`           | Público     | Comprobar que responde la API.                                 |
+
+Los DTOs validan entradas y el `ValidationPipe` global transforma valores, aplica whitelist y rechaza propiedades adicionales. Las respuestas de Users omiten `passwordHash` y `tokenVersion`. Las tareas pertenecen a un usuario; una tarea inexistente o ajena se responde como no encontrada.
+
+## Postman
+
+Importa `postman/backend-api.postman_collection.json` y `postman/local.postman_environment.json`, y selecciona **Backend API - Local**. La colección tiene 14 requests correspondientes a los endpoints de la tabla. Ejecuta `Register USER` y `Login (USER or ADMIN)` para guardar `userId` y `accessToken`; luego puedes probar perfil y tareas.
+
+Las solicitudes marcadas ADMIN requieren una cuenta `ADMIN` existente. Configura `adminEmail` y `adminPassword`, cambia `tokenTarget` a `admin` y ejecuta Login para guardar `adminToken`. El registro público no crea administradores. Ejecuta Logout al final porque revoca el token usado.
+
+## Pruebas y calidad
+
+```bash
+npm test -- --runInBand
+npm run test:e2e -- --runInBand
+npm run test:cov -- --runInBand
 npm run lint
 npm run build
 ```
 
-The initial E2E smoke test boots the Nest HTTP application and checks `GET /api/health`. It replaces only the TypeORM data-source provider because health does not depend on persistence, keeping this fast check runnable without external infrastructure. Future persistence E2E tests should use the PostgreSQL instance configured through the environment; CI already supplies that service.
+Las pruebas unitarias Jest cubren Auth, Users/roles y Tasks. Los E2E de Auth usan PostgreSQL real y cargan las credenciales desde `.env` o el entorno del proceso. La base de pruebas se selecciona mediante `DB_DATABASE_TEST` (por defecto `nest_backend_test`), independientemente de `DB_DATABASE`.
 
-## Coverage
-
-Coverage output is written to `coverage/`. An 80% threshold is intentionally not enforced while the codebase is only a skeleton. Add a global `coverageThreshold` to the `jest` section of `package.json` once substantive modules exist, and then enforce the course requirement without artificial tests.
-
-## Postman
-
-Import both files from `postman/`. Select **Backend API - Local** and run the Health request. The collection contains no credentials or tokens.
-
-## Docker
-
-`compose.yml` starts only PostgreSQL because containerizing the Nest development process adds little value at this stage. It includes persistent storage and a readiness healthcheck.
-
-Useful commands:
+Prepara la base de pruebas después de levantar Compose:
 
 ```bash
-docker compose up -d
-docker compose ps
-docker compose down
+docker compose exec -T postgres createdb -U postgres nest_backend_test
+npm run test:e2e -- --runInBand
 ```
 
-## Git Workflow
+El comando `createdb` se ejecuta una sola vez; si la base ya existe, no hace falta repetirlo. Si cambiaste `DB_USERNAME` o `DB_DATABASE_TEST`, ajusta el usuario y el nombre del comando. La suite E2E exige un nombre terminado en `_test`, limpia el esquema de esa base y aplica las migraciones antes de probar. No uses una base con datos que debas conservar.
 
-Use `feature/*`, `fix/*`, `test/*`, `docs/*`, or `chore/*` branches from `develop`, followed by a pull request into `develop`. Promote reviewed milestones from `develop` to `main`. See `CONTRIBUTING.md` for commits, reviews, local pre-push checks, CI, and required GitHub branch protection.
+Verificación local del 12 de octubre de 2026: 87 pruebas unitarias y 47 E2E aprobados (18 de Auth y 29 de Tasks); lint y build correctos. Tasks cubre CRUD, propiedad, filtros, paginación, entradas inválidas, ADMIN, persistencia al reiniciar Nest y clave foránea con eliminación en cascada. Las suites se ejecutan en serie porque comparten la base de pruebas. Cada suite recrea el esquema mediante migraciones y comprueba que una segunda ejecución no tenga migraciones pendientes.
 
-## Project Structure
+La cobertura unitaria fue 95.93% statements, 87.82% branches, 89.28% functions y 96.82% lines. Jest exige un mínimo global de 80% en las cuatro métricas; los comandos fallan si no encuentran pruebas. Se conservan las exclusiones de módulos, arranque, configuración y scripts de base de datos: el montaje de Nest y las migraciones se verifican mediante E2E; el seed se validó por ejecución repetida en PostgreSQL. Estas cifras corresponden a la cobertura unitaria, no a una combinación con E2E.
+
+CI ejecuta instalación, lint, unitarias, migraciones, E2E, cobertura y build. La validación de GitHub Actions quedará pendiente hasta publicar la rama; los resultados anteriores son de ejecución local.
+
+## Estructura principal
 
 ```text
 src/
-├── common/       # Shared cross-cutting building blocks
-├── config/       # Typed application and environment configuration
-├── database/     # TypeORM setup, migrations, and seeds
-└── modules/      # Feature modules (health plus auth/users placeholders)
-test/             # End-to-end tests and their environment setup
-postman/          # Shareable API collection and local environment
+├── common/       # Decoradores, guards y enums compartidos
+├── config/       # Configuración y validación del entorno
+├── database/     # DataSource y migraciones
+└── modules/
+	├── auth/     # Registro, login, logout y estrategia JWT
+	├── users/    # User, perfiles, roles y listado ADMIN
+	├── tasks/    # CRUD propio y listado global ADMIN
+	└── health/   # Endpoint de salud
+postman/          # Colección y environment local
 ```
 
-## Deployment
+## Contexto académico y licencia
 
-No cloud provider has been selected and no deployment is performed yet. After the team chooses a provider, add a reviewed `.github/workflows/deploy.yml` that deploys only after CI succeeds and obtains credentials from GitHub secrets or workload identity.
-
-## License / Academic Context
-
-This repository is an academic project for Computación en Internet III. It is currently marked `UNLICENSED`; the team should choose a license only if distribution is intended and university policy allows it.
+Proyecto académico para Computación en Internet III de la Universidad Icesi. El paquete conserva la licencia `UNLICENSED`; no se ha elegido una licencia de distribución.
