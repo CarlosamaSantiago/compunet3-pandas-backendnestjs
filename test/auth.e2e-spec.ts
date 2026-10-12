@@ -1,12 +1,10 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Test } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 
-import { AppModule } from '../src/app.module';
-import migrationSource from '../src/database/data-source';
+import { createTestApp, resetTestDatabase } from './helpers/test-app';
 
 const credentials = {
   name: 'Ana',
@@ -38,28 +36,8 @@ describe('Auth (e2e)', () => {
   }
 
   beforeAll(async () => {
-    // Seguridad: nunca borrar una base que no sea de pruebas.
-    expect(String(migrationSource.options.database)).toMatch(/_test$/);
-
-    // Base vacía + migrations (evidencia de "migrations sobre base vacía").
-    await migrationSource.initialize();
-    await migrationSource.dropDatabase();
-    await migrationSource.runMigrations();
-    await migrationSource.destroy();
-
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-    app = moduleRef.createNestApplication();
-    app.setGlobalPrefix('api');
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        transform: true,
-        forbidNonWhitelisted: true,
-      }),
-    );
-    await app.init();
+    await resetTestDatabase();
+    app = await createTestApp();
     dataSource = app.get(DataSource);
     jwtService = app.get(JwtService);
   });
@@ -69,7 +47,7 @@ describe('Auth (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   describe('POST /api/auth/register', () => {

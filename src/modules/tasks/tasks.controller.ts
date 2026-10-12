@@ -86,7 +86,7 @@ export class TasksController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() dto: UpdateTaskDto,
   ) {
-    if (Object.keys(dto).length === 0) {
+    if (!Object.values(dto).some((value) => value !== undefined)) {
       throw new BadRequestException('Debe proporcionar al menos un campo');
     }
 

@@ -5,7 +5,7 @@
 **Equipo:** `[Completar nombres de los tres integrantes]`
 **Fecha de entrega:** `[Completar]`
 
-> Este informe reúne la sección implementada por el Integrante 2 y deja marcadores para que los integrantes responsables completen Auth y Tasks. No se atribuyen resultados ni decisiones a secciones que todavía deben ser aportadas por ellos.
+> Este informe reúne las secciones de Users/roles y Tasks, junto con la verificación local de integración. La sección de Auth y los datos completos del equipo siguen pendientes de validación por sus responsables.
 
 ## 1. Resumen del proyecto
 
@@ -128,33 +128,63 @@ Resultados observados en la rama final de pruebas/documentación al 11 de octubr
 | Coverage RolesGuard      | 100% statements, branches, functions y lines.                       |
 | Coverage global          | 72.9% statements, 73.91% branches, 72.28% functions y 74.33% lines. |
 
-La cobertura global aún no alcanza el 80% exigido por la rúbrica. El resultado `test:e2e` sin pruebas no debe interpretarse como cobertura E2E aprobada.
+Estos resultados corresponden a la revisión del 11 de octubre. La verificación integrada del 12 de octubre, después de incorporar las pruebas de Auth y Tasks, se presenta en la sección 5.3 y supera el umbral del 80%.
 
 ## 5. Aporte del Integrante 3: tareas
 
-**Responsable:** `[Nombre y usuario GitHub del Integrante 3]`
+**Responsable:** Integrante 3, autor Git `sCarlosama`. Nombre completo pendiente de incorporar a la tabla del equipo.
 
-**Estado de esta sección:** pendiente de completar o validar por el integrante responsable.
+### 5.1 Modelo y propiedad
 
-### 5.1 Sección por completar
+`Task` contiene UUID, título (1 a 120 caracteres tras recortar espacios), descripción opcional (máximo 1.000), estado (`PENDING`, `IN_PROGRESS`, `COMPLETED`), prioridad (`LOW`, `MEDIUM`, `HIGH`), fecha límite ISO 8601 opcional, `userId` y fechas de auditoría. Los valores iniciales son `PENDING` y `MEDIUM`.
 
-`[Describir requisitos de Tasks, DTOs y validaciones, CRUD, filtros/paginación, autorización por propiedad, listado ADMIN, relación con User, migración y pruebas. Incluir resultados de pruebas ejecutadas por el Integrante 3.]`
+La migración crea los enums, índices y una clave foránea hacia `users` con `ON DELETE CASCADE`. El servidor toma el propietario del usuario autenticado. El ValidationPipe rechaza `userId` enviado por el cliente tanto al crear como al actualizar. Las consultas y modificaciones filtran simultáneamente por id de tarea y propietario; una tarea ajena o inexistente devuelve 404, incluso para un ADMIN.
 
-### 5.2 Endpoints observados
+### 5.2 Endpoints y validación
 
-El controller actual declara creación, listado propio, consulta, actualización y eliminación de tareas propias, además del listado global ADMIN. El Integrante 3 debe completar aquí el diseño y resultados de implementación según la versión final aprobada.
+| Método y ruta | Parámetros/cuerpo | Respuesta |
+| --- | --- | --- |
+| `POST /api/tasks` | Título obligatorio; descripción, estado, prioridad y fecha opcionales | 201, tarea creada |
+| `GET /api/tasks` | `status`, `priority`, `page`, `limit` opcionales | 200, `items`, `total`, `page`, `limit` |
+| `GET /api/tasks/:id` | UUID de tarea propia | 200, tarea; 404 si es ajena o inexistente |
+| `PATCH /api/tasks/:id` | UUID y al menos un campo editable | 200, tarea actualizada |
+| `DELETE /api/tasks/:id` | UUID de tarea propia | 204 sin cuerpo |
+| `GET /api/admin/tasks` | ADMIN; `page`, `limit` opcionales | 200, página de tareas con id, nombre y correo del propietario |
+
+Los listados usan `page=1`, `limit=10` y un máximo de 100. El orden es fecha de creación descendente y UUID descendente para desempatar. Todas las rutas exigen JWT (401); el listado global exige ADMIN (403). UUID, filtros, paginación y cuerpos inválidos producen 400. En PATCH, `null` permite borrar descripción y fecha límite.
+
+Los E2E detectaron que `{}` recibía 200 porque el DTO transformado tenía propiedades con valor `undefined`. La corrección exige al menos un valor definido. La prueba de regresión falló antes del cambio y pasó después con 400.
+
+### 5.3 Pruebas y CI
+
+`test/tasks.e2e-spec.ts` incorpora 29 casos con PostgreSQL real: CRUD, propiedad frente a otro USER y ADMIN, filtros individuales y combinados, paginación, rechazo de `userId`, JWT ausente, listado administrativo, validación, reinicio de Nest y restricciones de clave foránea/cascada. La preparación compartida exige una base terminada en `_test`, reconstruye el esquema usando las dos migraciones y verifica su repetición sin cambios. Las suites se ejecutan en serie.
+
+Verificación local del 12 de octubre de 2026:
+
+| Verificación | Resultado |
+| --- | --- |
+| Unitarias | 87 pruebas, 11 suites aprobadas |
+| E2E | 47 pruebas: 18 Auth y 29 Tasks aprobadas |
+| Lint y build | Correctos |
+| Cobertura statements | 95.93% |
+| Cobertura branches | 87.82% |
+| Cobertura functions | 89.28% |
+| Cobertura lines | 96.82% |
+
+Jest exige 80% global en las cuatro métricas y falla si no encuentra pruebas. La cobertura es unitaria y conserva las exclusiones existentes de arranque, módulos, configuración y scripts de base de datos; estos se verifican mediante integración y ejecución del seed. CI aplica migraciones antes de E2E y ejecuta lint, unitarias, E2E, cobertura y build. La ejecución remota de Actions sigue pendiente hasta publicar la rama.
 
 ## 6. Persistencia y despliegue local
 
-El repositorio contiene migraciones para `users` y `tasks`; la tabla de tareas referencia `users` con eliminación en cascada. `src/database/seeds` no contiene un seed implementado. La base local se puede levantar con Docker Compose y la configuración se obtiene de `.env`, que no se versiona.
+El repositorio contiene migraciones para `users` y `tasks`; la tabla de tareas referencia `users` con eliminación en cascada. PostgreSQL 17 se levanta con Docker Compose y volumen persistente. La configuración se obtiene de `.env`, que no se versiona. Se verificaron las migraciones sobre una base vacía y la creación de la extensión `uuid-ossp` por TypeORM.
+
+El seed del Integrante 1 se ejecuta con `npm run seed`, usando `SEED_ADMIN_PASSWORD` y `SEED_USER_PASSWORD`. En la verificación local creó un ADMIN, dos USER y seis tareas. Una segunda ejecución agregó cero registros; se validaron los hashes con bcrypt y los tres usuarios/seis tareas sobrevivieron al reinicio del contenedor PostgreSQL.
 
 No se documenta un despliegue cloud porque no hay proveedor configurado en el proyecto actual.
 
 ## 7. Pendientes antes de entregar
 
 - Reemplazar los marcadores del equipo por nombres y perfiles reales.
-- Completar y revisar las secciones de Auth y Tasks con sus responsables.
-- Definir y documentar el mecanismo controlado para provisionar el primer ADMIN.
-- Alcanzar el 80% de cobertura global mediante pruebas relevantes y añadir pruebas E2E si la rúbrica lo exige.
-- Confirmar que las migraciones se aplican en una base limpia, incluida la disponibilidad de `uuid-ossp`.
+- Completar y revisar la sección de Auth con su responsable.
+- Implementar y documentar el despliegue en nube, HTTPS, migrations y pipeline posterior a CI.
+- Publicar las URL de API y Swagger y comprobar CI en GitHub.
 - Hacer una revisión final del informe contra la rúbrica y la versión exacta integrada en `develop`.
