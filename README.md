@@ -78,7 +78,7 @@ npm run migration:revert
 npm run migration:generate -- src/database/migrations/DescribeChange
 ```
 
-No hay seed implementado todavía: `src/database/seeds` contiene solo `.gitkeep`. El registro público crea usuarios `USER`; no hay endpoint público para crear el primer `ADMIN`. La provisión inicial de un administrador debe acordarse y realizarse por un mecanismo controlado por el equipo.
+El script `npm run seed` crea `admin@taskflow.com` (ADMIN), `user1@taskflow.com` y `user2@taskflow.com` (USER), y seis tareas. Configura `SEED_ADMIN_PASSWORD` y `SEED_USER_PASSWORD` en `.env` antes de ejecutarlo; ambas requieren al menos ocho caracteres. Las contraseñas se guardan con bcrypt. Tras aplicar las migraciones, puedes repetir el seed: conserva los usuarios existentes y no duplica las tareas iniciales por propietario y título.
 
 ## Endpoints
 
@@ -119,7 +119,22 @@ npm run lint
 npm run build
 ```
 
-Las pruebas unitarias Jest cubren Users/roles y Tasks. El repositorio todavía no tiene archivos E2E; por `--passWithNoTests`, `npm run test:e2e` informa “No tests found” y termina con código 0, lo cual **no significa que se haya probado E2E**. La cobertura global observada actualmente está por debajo del 80% requerido por la rúbrica; no se configura un umbral que la haga pasar artificialmente. CI ejecuta lint, pruebas unitarias, E2E, cobertura y build en pull requests y en pushes a `main`/`develop`.
+Las pruebas unitarias Jest cubren Auth, Users/roles y Tasks. Los E2E de Auth usan PostgreSQL real y cargan las credenciales desde `.env` o el entorno del proceso. La base de pruebas se selecciona mediante `DB_DATABASE_TEST` (por defecto `nest_backend_test`), independientemente de `DB_DATABASE`.
+
+Prepara la base de pruebas después de levantar Compose:
+
+```bash
+docker compose exec -T postgres createdb -U postgres nest_backend_test
+npm run test:e2e -- --runInBand
+```
+
+El comando `createdb` se ejecuta una sola vez; si la base ya existe, no hace falta repetirlo. Si cambiaste `DB_USERNAME` o `DB_DATABASE_TEST`, ajusta el usuario y el nombre del comando. La suite E2E exige un nombre terminado en `_test`, limpia el esquema de esa base y aplica las migraciones antes de probar. No uses una base con datos que debas conservar.
+
+Verificación local del 12 de octubre de 2026: 87 pruebas unitarias y 47 E2E aprobados (18 de Auth y 29 de Tasks); lint y build correctos. Tasks cubre CRUD, propiedad, filtros, paginación, entradas inválidas, ADMIN, persistencia al reiniciar Nest y clave foránea con eliminación en cascada. Las suites se ejecutan en serie porque comparten la base de pruebas. Cada suite recrea el esquema mediante migraciones y comprueba que una segunda ejecución no tenga migraciones pendientes.
+
+La cobertura unitaria fue 95.93% statements, 87.82% branches, 89.28% functions y 96.82% lines. Jest exige un mínimo global de 80% en las cuatro métricas; los comandos fallan si no encuentran pruebas. Se conservan las exclusiones de módulos, arranque, configuración y scripts de base de datos: el montaje de Nest y las migraciones se verifican mediante E2E; el seed se validó por ejecución repetida en PostgreSQL. Estas cifras corresponden a la cobertura unitaria, no a una combinación con E2E.
+
+CI ejecuta instalación, lint, unitarias, migraciones, E2E, cobertura y build. La validación de GitHub Actions quedará pendiente hasta publicar la rama; los resultados anteriores son de ejecución local.
 
 ## Estructura principal
 
