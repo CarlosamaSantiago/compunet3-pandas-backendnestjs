@@ -1,0 +1,800 @@
+{
+  "info": {
+    "_postman_id": "8093627b-afea-4a7f-b752-7f24d3add120",
+    "name": "TaskFlow - Integrante 1 - Auth",
+    "description": "Auth del Integrante 1: registro, login (USER y ADMIN), logout y escenarios negativos (409, 400, 401, 403). Usar el environment compartido. Orden: Auth completo y, al final, Session. Ver postman/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register USER",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman User\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "Crea una cuenta con rol USER. El script crea un correo distinto para cada ejecución y guarda userId."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('userEmail', `postman-${Date.now()}@example.com`);",
+                  "pm.environment.set('userPassword', 'TaskflowPostman123!');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "if (pm.response.code === 201) {",
+                  "  const user = pm.response.json();",
+                  "  pm.environment.set('userId', user.id);",
+                  "  pm.test('Registration returns a USER id', function () {",
+                  "    pm.expect(user.role).to.eql('USER');",
+                  "    pm.expect(user).not.to.have.property('passwordHash');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login (USER or ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{loginEmail}}\",\n  \"password\": \"{{loginPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "tokenTarget=user guarda accessToken; tokenTarget=admin guarda adminToken. Para ADMIN, define adminEmail/adminPassword con una cuenta ADMIN existente."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const target = pm.environment.get('tokenTarget') || 'user';",
+                  "const isAdmin = target === 'admin';",
+                  "pm.variables.set('loginEmail', pm.environment.get(isAdmin ? 'adminEmail' : 'userEmail'));",
+                  "pm.variables.set('loginPassword', pm.environment.get(isAdmin ? 'adminPassword' : 'userPassword'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const result = pm.response.json();",
+                  "  const target = pm.environment.get('tokenTarget') || 'user';",
+                  "  pm.environment.set(target === 'admin' ? 'adminToken' : 'accessToken', result.accessToken);",
+                  "  pm.test('Login returns a Bearer access token', function () {",
+                  "    pm.expect(result.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.expect(result.tokenType).to.eql('Bearer');",
+                  "  });",
+                  "}",
+                  "pm.test('expiresIn es positivo', function () { if (pm.response.code === 200) pm.expect(pm.response.json().expiresIn).to.be.above(0); });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login ADMIN (seed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Inicia sesión con la cuenta ADMIN del seed (adminEmail=admin@taskflow.com y adminPassword=SEED_ADMIN_PASSWORD, cargados solo en el environment local) y guarda adminToken sin cambiar tokenTarget."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const result = pm.response.json();",
+                  "  pm.environment.set('adminToken', result.accessToken);",
+                  "  pm.test('Login ADMIN devuelve un token Bearer', function () {",
+                  "    pm.expect(result.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.expect(result.tokenType).to.eql('Bearer');",
+                  "    pm.expect(result.expiresIn).to.be.above(0);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Escenarios negativos",
+          "description": "Ejecutar después de Register USER y Login. Todas las peticiones esperan un error; la expectativa es el código específico.",
+          "item": [
+            {
+              "name": "[409] Register con correo duplicado",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/register",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Duplicado\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Reutiliza el userEmail creado por Register USER."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(409);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "  pm.expect(body.message).to.include('registrado');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Register enviando role",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/register",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Intruso\",\n  \"email\": \"intruso-{{$timestamp}}@example.com\",\n  \"password\": \"TaskflowPostman123!\",\n  \"role\": \"ADMIN\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "El rol nunca lo decide el cliente: forbidNonWhitelisted rechaza el campo."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(400);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "  pm.expect(JSON.stringify(body.message)).to.include('role');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Register con datos inválidos",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/register",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"A\",\n  \"email\": \"no-es-correo\",\n  \"password\": \"123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Nombre corto, correo sin formato y contraseña de menos de 8 caracteres."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(400);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[401] Login con contraseña incorrecta",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/login",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"ContrasenaIncorrecta1\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(401);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "  pm.expect(body.message).to.eql('Credenciales incorrectas');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[401] Login con correo inexistente",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/login",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"nadie-{{$timestamp}}@example.com\",\n  \"password\": \"TaskflowPostman123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Mismo mensaje que la contraseña incorrecta: no revela qué cuentas existen."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(401);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "  pm.expect(body.message).to.eql('Credenciales incorrectas');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Login con cuerpo inválido",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/login",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"no-es-correo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(400);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[401] Ruta protegida sin token",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/users/me",
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "JWT ausente."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(401);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[401] Ruta protegida con token mal formado",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/users/me",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{malformedToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Usa un valor que no es un JWT. malformedToken se fija en el pre-request."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.environment.set('malformedToken', 'esto.no.es.un.jwt');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(401);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[401] Token con firma inválida",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/users/me",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{forgedToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "JWT con estructura válida pero firmado con otro secreto (no contiene datos reales). El vencimiento se cubre en las pruebas E2E."
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.environment.set('forgedToken', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDAiLCJ0b2tlblZlcnNpb24iOjAsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwfQ.firma-invalida');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                      "pm.test('El cuerpo trae statusCode y message', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.statusCode).to.eql(401);",
+                      "  pm.expect(body).to.have.property('message');",
+                      "});",
+                      "pm.test('El error no filtra trazas ni SQL', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('stack');",
+                      "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[403] USER en ruta exclusiva de ADMIN",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/users?page=1&limit=10",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Debe ejecutarse antes de Logout. Con accessToken de un USER, RolesGuard responde 403."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 403', function () { pm.response.to.have.status(403); });",
+                      "pm.test('Mensaje Forbidden', function () { pm.expect(pm.response.json().message).to.eql('Forbidden'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[200] ADMIN en ruta de ADMIN",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/users?page=1&limit=10",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Con adminToken (Login ADMIN) la misma ruta responde 200 y no expone campos sensibles."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Respuesta paginada', function () {",
+                      "  const body = pm.response.json();",
+                      "  pm.expect(body.items).to.be.an('array');",
+                      "  pm.expect(body).to.include.keys('total', 'page', 'limit');",
+                      "});",
+                      "pm.test('La respuesta no expone campos sensibles', function () {",
+                      "  const text = pm.response.text();",
+                      "  pm.expect(text).not.to.include('passwordHash');",
+                      "  pm.expect(text).not.to.include('tokenVersion');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Session",
+      "item": [
+        {
+          "name": "Logout",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Debe ejecutarse al final: revoca el accessToken actual incrementando tokenVersion. Antes de limpiarlo, guarda una copia en revokedToken para comprobar que ya no sirve."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });",
+                  "if (pm.response.code === 204) {",
+                  "  pm.environment.set('revokedToken', pm.environment.get('accessToken'));",
+                  "  pm.environment.unset('accessToken');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "[401] Reusar token tras logout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{revokedToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Ejecutar justo después de Logout. El token anterior debe responder 401 Token inválido o revocado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('El cuerpo trae statusCode y message', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.statusCode).to.eql(401);",
+                  "  pm.expect(body).to.have.property('message');",
+                  "  pm.expect(body.message).to.eql('Token inválido o revocado');",
+                  "});",
+                  "pm.test('El error no filtra trazas ni SQL', function () {",
+                  "  const text = pm.response.text();",
+                  "  pm.expect(text).not.to.include('stack');",
+                  "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "[401] Repetir logout con token revocado",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{revokedToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                  "pm.test('El cuerpo trae statusCode y message', function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.statusCode).to.eql(401);",
+                  "  pm.expect(body).to.have.property('message');",
+                  "});",
+                  "pm.test('El error no filtra trazas ni SQL', function () {",
+                  "  const text = pm.response.text();",
+                  "  pm.expect(text).not.to.include('stack');",
+                  "  pm.expect(text).not.to.match(/SELECT|INSERT|QueryFailed/i);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Limpiar tokens locales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health",
+            "description": "Borra revokedToken, malformedToken y forgedToken del environment para no dejar tokens guardados antes de exportar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.unset('revokedToken');",
+                  "pm.environment.unset('malformedToken');",
+                  "pm.environment.unset('forgedToken');",
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}
