@@ -57,9 +57,7 @@ jobs:
         run: npm run lint
 
       - name: Unit tests
-        run: |
-          npm run test:resolver
-          npm test -- --runInBand
+        run: npm test -- --runInBand
 
       - name: Apply database migrations
         run: npm run migration:run

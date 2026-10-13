@@ -24,6 +24,7 @@ Completar los nombres y perfiles antes de la entrega:
 - Node.js 22 o superior y npm.
 - Docker Desktop u otro runtime compatible con Docker Compose.
 - PostgreSQL puede ejecutarse mediante el Compose incluido.
+- En Windows x64, instalar [Microsoft Visual C++ Redistributable x64](https://learn.microsoft.com/es-es/cpp/windows/latest-supported-vc-redist). El resolvedor nativo de Jest necesita este runtime. Si Node encuentra `ts-jest` pero Jest informa que falta y `unrs-resolver` devuelve `Cannot find native binding`, comprobar el runtime antes de reinstalar dependencias. Se puede instalar con `winget install --id Microsoft.VCRedist.2015+.x64 --exact --source winget`.
 
 ## Instalación y ejecución
 
