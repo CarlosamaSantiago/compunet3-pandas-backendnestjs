@@ -1,6 +1,6 @@
 # TaskFlow — Informe final
 
-Oct 13, 2026 · @Josh
+Oct 13, 2026 · https://github.com/CarlosamaSantiago/compunet3-pandas-backendnestjs
 
 ## 1. Resumen y alcance
 
