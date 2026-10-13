@@ -7,9 +7,15 @@
   "maxWorkers": 1,
   "setupFiles": ["<rootDir>/test/setup-env.ts"],
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "<rootDir>/tsconfig.jest.json" }]
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/tsconfig.jest.json"
+      }
+    ]
   },
   "transformIgnorePatterns": [
     "node_modules/(?!(@nestjs/jwt|@nestjs/passport)/)"
-  ]
+  ],
+  "resolver": "<rootDir>/test/jest-resolver.cjs"
 }

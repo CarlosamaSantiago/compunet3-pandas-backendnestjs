@@ -29,7 +29,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prepare": "husky",
     "postman:build": "node postman/build-collection.cjs",
-    "postman:tasks": "node postman/run-tasks.cjs"
+    "postman:tasks": "node postman/run-tasks.cjs",
+    "test:resolver": "node --test test/jest-resolver.test.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",
@@ -122,7 +123,8 @@
         "lines": 80
       }
     },
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "resolver": "<rootDir>/../test/jest-resolver.cjs"
   },
   "allowScripts": {
     "bcrypt@6.0.0": true,
