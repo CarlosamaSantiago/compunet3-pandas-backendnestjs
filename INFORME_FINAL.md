@@ -173,18 +173,28 @@ Verificación local del 12 de octubre de 2026:
 
 Jest exige 80% global en las cuatro métricas y falla si no encuentra pruebas. La cobertura es unitaria y conserva las exclusiones existentes de arranque, módulos, configuración y scripts de base de datos; estos se verifican mediante integración y ejecución del seed. CI aplica migraciones antes de E2E y ejecuta lint, unitarias, E2E, cobertura y build. La ejecución remota de Actions sigue pendiente hasta publicar la rama.
 
-## 6. Persistencia y despliegue local
+### 5.4 Escenarios Postman de Tasks
+
+La colección parcial Tasks/Health contiene 44 peticiones con verificaciones de estado y contenido: preparación de dos propietarios, login ADMIN, CRUD, filtros individuales y combinados, paginación, campos anulables, datos inválidos, propiedad y respuestas administrativas sin campos sensibles. El cierre elimina las tres tareas de prueba y revoca las sesiones USER. Las cuentas de prueba permanecen; se usa una base desechable.
+
+El generador integra las colecciones originales de Auth (18 peticiones) y Users (35) con Tasks (44): 97 peticiones para los 14 endpoints requeridos. Cada responsable mantiene su archivo; el JSON integrado no se edita directamente. CI valida la composición y ejecuta Tasks con Newman tras preparar PostgreSQL y el seed.
+
+## 6. Persistencia y despliegue
 
 El repositorio contiene migraciones para `users` y `tasks`; la tabla de tareas referencia `users` con eliminación en cascada. PostgreSQL 17 se levanta con Docker Compose y volumen persistente. La configuración se obtiene de `.env`, que no se versiona. Se verificaron las migraciones sobre una base vacía y la creación de la extensión `uuid-ossp` por TypeORM.
 
 El seed del Integrante 1 se ejecuta con `npm run seed`, usando `SEED_ADMIN_PASSWORD` y `SEED_USER_PASSWORD`. En la verificación local creó un ADMIN, dos USER y seis tareas. Una segunda ejecución agregó cero registros; se validaron los hashes con bcrypt y los tres usuarios/seis tareas sobrevivieron al reinicio del contenedor PostgreSQL.
 
-No se documenta un despliegue cloud porque no hay proveedor configurado en el proyecto actual.
+La API está desplegada en Railway: https://compunet3-pandas-backendnestjs-production.up.railway.app, con Swagger en /api/docs. El 12 de octubre se verificó HTTPS, salud 200, Swagger 200, 14 operaciones en OpenAPI y rechazo 401 de Tasks/perfil sin JWT. Son comprobaciones públicas de lectura; no sustituyen pruebas autenticadas en producción.
+
+Arquitectura: cliente → HTTPS Railway → NestJS → PostgreSQL. El responsable confirmó main y Wait for CI activado. El predeploy ejecuta migrations compiladas y seed; los errores bloquean el despliegue. Nest no vuelve a aplicar migrations al iniciar cada réplica. Variables y secretos se configuran fuera del repositorio. DEPLOYMENT.md detalla configuración, flujo y evidencia pendiente del volumen persistente, SHA desplegado y Actions.
 
 ## 7. Pendientes antes de entregar
 
 - Reemplazar los marcadores del equipo por nombres y perfiles reales.
 - Completar y revisar la sección de Auth con su responsable.
-- Implementar y documentar el despliegue en nube, HTTPS, migrations y pipeline posterior a CI.
-- Publicar las URL de API y Swagger y comprobar CI en GitHub.
+- Registrar evidencia del volumen PostgreSQL y del commit desplegado después de CI; verificar login y CRUD autenticados en nube.
+- Adjuntar el enlace de GitHub Actions aprobado para el commit final.
 - Hacer una revisión final del informe contra la rúbrica y la versión exacta integrada en `develop`.
+
+Verificación local del 12 de octubre de 2026: Tasks aprobó 44 peticiones y 76 aserciones. La colección integrada también aprobó sus 97 elementos, 112 solicitudes HTTP (incluidas las llamadas auxiliares de scripts) y 201 aserciones, sin fallos, sobre PostgreSQL de pruebas. Esta ejecución no acredita los mismos resultados en Railway.

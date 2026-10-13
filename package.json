@@ -22,12 +22,14 @@
     "seed": "ts-node src/database/seeds/seed.ts",
     "migration:run:prod": "typeorm migration:run -d dist/database/data-source.js",
     "seed:prod": "node dist/database/seeds/seed.js",
-    "railway:predeploy": "npm run migration:run:prod && (npm run seed:prod || echo \"Seed omitido: revisar SEED_ADMIN_PASSWORD y SEED_USER_PASSWORD\")",
+    "railway:predeploy": "npm run migration:run:prod && npm run seed:prod",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postman:build": "node postman/build-collection.cjs",
+    "postman:tasks": "node postman/run-tasks.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.0",
@@ -68,6 +70,7 @@
     "globals": "^16.3.0",
     "husky": "^9.1.7",
     "jest": "^30.1.0",
+    "newman": "6.2.3",
     "prettier": "^3.6.0",
     "source-map-support": "^0.5.21",
     "supertest": "^7.1.0",
@@ -81,7 +84,8 @@
   "overrides": {
     "@nestjs/swagger": {
       "js-yaml": "5.4.2"
-    }
+    },
+    "handlebars": "4.7.10"
   },
   "jest": {
     "moduleFileExtensions": [
