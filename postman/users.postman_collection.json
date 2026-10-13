@@ -1,0 +1,1600 @@
+{
+  "info": {
+    "_postman_id": "f5c787b0-5103-4b1e-8888-5826aef651a9",
+    "name": "TaskFlow - Integrante 2 - Users",
+    "description": "Integrante 2 - Users. Usar el environment compartido con baseUrl, adminEmail y adminPassword. Las peticiones son repetibles y no dependen del orden de ejecución.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get my profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/me",
+            "description": "Consulta el perfil de la cuenta autenticada. Guarda su ID en userId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+                  "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const u = pm.response.json();",
+                  "  pmSet('userId', u.id);",
+                  "  pm.test('Perfil con campos públicos', function () {",
+                  "    pm.expect(u).to.include.keys('id', 'name', 'email', 'role', 'createdAt', 'updatedAt');",
+                  "    pm.expect(['USER', 'ADMIN']).to.include(u.role);",
+                  "  });",
+                  "  pm.test('No expone passwordHash ni tokenVersion', function () {",
+                  "    pm.expect(u).not.to.have.property('passwordHash');",
+                  "    pm.expect(u).not.to.have.property('tokenVersion');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update my profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman User Updated\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/users/me",
+            "description": "Actualiza solo campos del perfil permitidos: name y/o email."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const u = pm.response.json();",
+                  "  pm.test('Nombre actualizado', function () { pm.expect(u.name).to.eql('Postman User Updated'); });",
+                  "  pm.test('No expone passwordHash ni tokenVersion', function () {",
+                  "    pm.expect(u).not.to.have.property('passwordHash');",
+                  "    pm.expect(u).not.to.have.property('tokenVersion');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List users (ADMIN)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users?page=1&limit=10",
+            "description": "Requiere adminToken de una cuenta que ya tenga rol ADMIN."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const r = pm.response.json();",
+                  "  pm.test('Formato paginado: items, total, page, limit', function () {",
+                  "    pm.expect(r.items).to.be.an('array');",
+                  "    pm.expect(r.total).to.be.a('number');",
+                  "    pm.expect(r.page).to.eql(1);",
+                  "    pm.expect(r.limit).to.eql(10);",
+                  "    pm.expect(r.items.length).to.be.at.most(10);",
+                  "  });",
+                  "  pm.test('Ningún usuario expone passwordHash ni tokenVersion', function () {",
+                  "    r.items.forEach(function (u) {",
+                  "      pm.expect(u).not.to.have.property('passwordHash');",
+                  "      pm.expect(u).not.to.have.property('tokenVersion');",
+                  "    });",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change user role (ADMIN)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}/role",
+            "description": "Promueve a ADMIN el usuario de userId y, al terminar, le devuelve el rol que tenía para no alterar otras pruebas."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+                  "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+                  "const api = pm.variables.get('baseUrl') + '/api';",
+                  "function call(method, path, token, payload, done) {",
+                  "  const r = { url: api + path, method: method, header: [{ key: 'Content-Type', value: 'application/json' }] };",
+                  "  if (token) { r.header.push({ key: 'Authorization', value: 'Bearer ' + token }); }",
+                  "  if (payload) { r.body = { mode: 'raw', raw: JSON.stringify(payload) }; }",
+                  "  pm.sendRequest(r, function (err, res) {",
+                  "    let json = null;",
+                  "    try { json = res ? res.json() : null; } catch (e) { json = null; }",
+                  "    done(err ? 0 : res.code, json);",
+                  "  });",
+                  "}",
+                  "function uniqueEmail(prefix) {",
+                  "  return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '@example.com';",
+                  "}",
+                  "call('GET', '/users/me', pm.variables.get('accessToken'), null, function (code, me) {",
+                  "  if (code === 200) { pmSet('userId', me.id); pm.variables.set('userOriginalRole', me.role); }",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const api = pm.variables.get('baseUrl') + '/api';",
+                  "function call(method, path, token, payload, done) {",
+                  "  const r = { url: api + path, method: method, header: [{ key: 'Content-Type', value: 'application/json' }] };",
+                  "  if (token) { r.header.push({ key: 'Authorization', value: 'Bearer ' + token }); }",
+                  "  if (payload) { r.body = { mode: 'raw', raw: JSON.stringify(payload) }; }",
+                  "  pm.sendRequest(r, function (err, res) {",
+                  "    let json = null;",
+                  "    try { json = res ? res.json() : null; } catch (e) { json = null; }",
+                  "    done(err ? 0 : res.code, json);",
+                  "  });",
+                  "}",
+                  "function uniqueEmail(prefix) {",
+                  "  return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '@example.com';",
+                  "}",
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "  const u = pm.response.json();",
+                  "  pm.test('Usuario devuelto con el nuevo rol ADMIN', function () {",
+                  "    pm.expect(u.id).to.eql(pm.variables.get('userId'));",
+                  "    pm.expect(u.role).to.eql('ADMIN');",
+                  "  });",
+                  "  pm.test('No expone passwordHash ni tokenVersion', function () {",
+                  "    pm.expect(u).not.to.have.property('passwordHash');",
+                  "    pm.expect(u).not.to.have.property('tokenVersion');",
+                  "  });",
+                  "}",
+                  "const original = pm.variables.get('userOriginalRole') || 'USER';",
+                  "if (original !== 'ADMIN') {",
+                  "  call('PATCH', '/users/' + pm.variables.get('userId') + '/role', pm.variables.get('adminToken'), { role: original }, function (code) {",
+                  "    pm.test('Rol original restaurado (' + original + ')', function () { pm.expect(code).to.eql(200); });",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Escenarios Users",
+          "description": "Cada petición indica en su nombre el código HTTP esperado. Se pueden ejecutar completas, por subcarpeta o una por una, y repetir cuantas veces se quiera: cada una prepara sus cuentas desechables y deja los roles como los encontró.",
+          "item": [
+            {
+              "name": "0. Preparación",
+              "description": "Opcional: cualquier petición de los escenarios prepara por sí sola lo que necesita.",
+              "item": [
+                {
+                  "name": "200 · Comprobar adminToken",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "Si adminToken falta o no es válido, el pre-request de la carpeta Users inicia sesión con adminEmail/adminPassword."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const adminStatus = pm.variables.get('adminStatus') || 'ok';",
+                          "pm.test('Sesión ADMIN disponible' + (adminStatus === 'ok' ? '' : ' → ' + adminStatus), function () { pm.expect(adminStatus).to.eql('ok'); });",
+                          "if (pm.response.code === 200) {",
+                          "  pm.test('adminToken pertenece a un ADMIN', function () { pm.expect(pm.response.json().role).to.eql('ADMIN'); });",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "200 · Preparar cuentas del escenario",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "Registra dos cuentas desechables nuevas (A y B) e inicia sesión con A."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "  const u = pm.response.json();",
+                          "  pm.test('Cuenta del escenario con rol USER', function () {",
+                          "    pm.expect(u.id).to.eql(pm.variables.get('scnUserId'));",
+                          "    pm.expect(u.role).to.eql('USER');",
+                          "  });",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "1. Perfil y correo",
+              "description": "RF-04, RN-01, RN-03 y RN-08 sobre la cuenta desechable A.",
+              "item": [
+                {
+                  "name": "401 · Perfil sin token",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": ""
+                  },
+                  "response": []
+                },
+                {
+                  "name": "401 · Perfil con token inválido",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "Token con formato JWT pero firma inválida."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.firma-invalida' });"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "200 · Normaliza correo (mayúsculas y espacios)",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{scnRawEmail}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const local = 'users-a-norm-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);",
+                          "pm.variables.set('scnRawEmail', '  ' + local.toUpperCase() + '@Example.COM  ');",
+                          "pm.variables.set('scnExpectedEmail', local + '@example.com');"
+                        ]
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+                          "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+                          "if (pm.response.code === 200) {",
+                          "  pm.test('Correo guardado en minúsculas y sin espacios', function () {",
+                          "    pm.expect(pm.response.json().email).to.eql(pm.variables.get('scnExpectedEmail'));",
+                          "  });",
+                          "  pmSet('scnEmail', pm.variables.get('scnExpectedEmail'));",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "409 · Correo duplicado",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "Usa el correo de la cuenta desechable B.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{scnOtherEmail}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "409 · Correo duplicado con otra capitalización",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"{{scnOtherEmailUpper}}\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.variables.set('scnOtherEmailUpper', String(pm.variables.get('scnOtherEmail')).toUpperCase());"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "400 · Actualización vacía",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · Correo con formato inválido",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"no-es-correo\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · Nombre demasiado corto",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"A\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · No permite cambiar el rol desde el perfil",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"role\": \"ADMIN\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · No permite cambiar la contraseña desde el perfil",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"password\": \"OtraClave12345\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "200 · El perfil conserva el rol USER",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": ""
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "  const u = pm.response.json();",
+                          "  pm.test('Cuenta del escenario con rol USER', function () {",
+                          "    pm.expect(u.id).to.eql(pm.variables.get('scnUserId'));",
+                          "    pm.expect(u.role).to.eql('USER');",
+                          "  });",
+                          "}",
+                          "if (pm.response.code === 200) {",
+                          "  pm.test('Correo coincide con el último guardado', function () {",
+                          "    pm.expect(pm.response.json().email).to.eql(pm.variables.get('scnEmail'));",
+                          "  });",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "2. Roles, validación y paginación",
+              "description": "RF-05, RN-03 y RN-04. Las peticiones no modifican datos.",
+              "item": [
+                {
+                  "name": "403 · USER lista usuarios",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users",
+                    "description": ""
+                  },
+                  "response": []
+                },
+                {
+                  "name": "403 · USER intenta asignarse ADMIN",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/{{scnUserId}}/role",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"role\": \"ADMIN\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "401 · Listado sin token",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users",
+                    "description": ""
+                  },
+                  "response": []
+                },
+                {
+                  "name": "200 · Paginación por defecto (page=1, limit=10)",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users",
+                    "description": ""
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "  const r = pm.response.json();",
+                          "  pm.test('Valores por defecto', function () {",
+                          "    pm.expect(r.page).to.eql(1);",
+                          "    pm.expect(r.limit).to.eql(10);",
+                          "    pm.expect(r.items).to.be.an('array');",
+                          "    pm.expect(r.items.length).to.be.within(1, 10);",
+                          "    pm.expect(r.total).to.be.at.least(r.items.length);",
+                          "  });",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "200 · Paginación page=2, limit=2",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users?page=2&limit=2",
+                    "description": ""
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "  const r = pm.response.json();",
+                          "  pm.test('Respeta page y limit', function () {",
+                          "    pm.expect(r.page).to.eql(2);",
+                          "    pm.expect(r.limit).to.eql(2);",
+                          "    pm.expect(r.items).to.be.an('array');",
+                          "    pm.expect(r.items.length).to.be.at.most(2);",
+                          "  });",
+                          "  pm.test('Sin campos sensibles', function () {",
+                          "    r.items.forEach(function (u) {",
+                          "      pm.expect(u).not.to.have.property('passwordHash');",
+                          "      pm.expect(u).not.to.have.property('tokenVersion');",
+                          "    });",
+                          "  });",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "400 · limit mayor que 100",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users?limit=101",
+                    "description": ""
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · page=0",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users?page=0",
+                    "description": ""
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · page no numérico",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users?page=abc",
+                    "description": ""
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · Cambio de rol con ID no UUID",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/no-es-uuid/role",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"role\": \"ADMIN\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "404 · Cambio de rol a usuario inexistente",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/00000000-0000-4000-8000-000000000000/role",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"role\": \"ADMIN\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · Rol no permitido",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/{{scnUserId}}/role",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"role\": \"SUPERADMIN\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · Cambio de rol sin cuerpo",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/{{scnUserId}}/role",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "400 · Cambio de rol con campo adicional",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/{{scnUserId}}/role",
+                    "description": "",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"role\": \"ADMIN\",\n  \"email\": \"otro@example.com\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "3. Cambio de rol con el mismo token",
+              "description": "Comprueba que el rol se lee de la base en cada petición, no del JWT. Cada petición deja a A como USER.",
+              "item": [
+                {
+                  "name": "200 · Rol ADMIN aplica a un token ya emitido",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users",
+                    "description": "El pre-request promueve A a ADMIN; su token anterior ya permite el listado (RN-07). Al terminar, A vuelve a USER."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+                          "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+                          "const api = pm.variables.get('baseUrl') + '/api';",
+                          "function call(method, path, token, payload, done) {",
+                          "  const r = { url: api + path, method: method, header: [{ key: 'Content-Type', value: 'application/json' }] };",
+                          "  if (token) { r.header.push({ key: 'Authorization', value: 'Bearer ' + token }); }",
+                          "  if (payload) { r.body = { mode: 'raw', raw: JSON.stringify(payload) }; }",
+                          "  pm.sendRequest(r, function (err, res) {",
+                          "    let json = null;",
+                          "    try { json = res ? res.json() : null; } catch (e) { json = null; }",
+                          "    done(err ? 0 : res.code, json);",
+                          "  });",
+                          "}",
+                          "function uniqueEmail(prefix) {",
+                          "  return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '@example.com';",
+                          "}",
+                          "// Promueve A antes de usar su token, emitido cuando A era USER.",
+                          "pmSet('scnRoleDirty', true);",
+                          "call('PATCH', '/users/' + pm.variables.get('scnUserId') + '/role', pm.variables.get('adminToken'), { role: 'ADMIN' }, function (code, u) {",
+                          "  pm.variables.set('scnPromoteCode', code);",
+                          "});"
+                        ]
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+                          "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+                          "const api = pm.variables.get('baseUrl') + '/api';",
+                          "function call(method, path, token, payload, done) {",
+                          "  const r = { url: api + path, method: method, header: [{ key: 'Content-Type', value: 'application/json' }] };",
+                          "  if (token) { r.header.push({ key: 'Authorization', value: 'Bearer ' + token }); }",
+                          "  if (payload) { r.body = { mode: 'raw', raw: JSON.stringify(payload) }; }",
+                          "  pm.sendRequest(r, function (err, res) {",
+                          "    let json = null;",
+                          "    try { json = res ? res.json() : null; } catch (e) { json = null; }",
+                          "    done(err ? 0 : res.code, json);",
+                          "  });",
+                          "}",
+                          "function uniqueEmail(prefix) {",
+                          "  return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '@example.com';",
+                          "}",
+                          "pm.test('ADMIN promovió a A (HTTP 200)', function () { pm.expect(pm.variables.get('scnPromoteCode')).to.eql(200); });",
+                          "// Siempre devuelve A a USER, pase o falle la prueba.",
+                          "call('PATCH', '/users/' + pm.variables.get('scnUserId') + '/role', pm.variables.get('adminToken'), { role: 'USER' }, function (code) {",
+                          "  if (code === 200) { pmUnset('scnRoleDirty'); }",
+                          "  pm.test('A vuelve a USER al terminar', function () { pm.expect(code).to.eql(200); });",
+                          "});"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "403 · Degradación aplica a un token ya emitido",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{scnToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users",
+                    "description": "El pre-request promueve A y lo devuelve a USER; el mismo token vuelve a recibir 403."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+                          "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+                          "const api = pm.variables.get('baseUrl') + '/api';",
+                          "function call(method, path, token, payload, done) {",
+                          "  const r = { url: api + path, method: method, header: [{ key: 'Content-Type', value: 'application/json' }] };",
+                          "  if (token) { r.header.push({ key: 'Authorization', value: 'Bearer ' + token }); }",
+                          "  if (payload) { r.body = { mode: 'raw', raw: JSON.stringify(payload) }; }",
+                          "  pm.sendRequest(r, function (err, res) {",
+                          "    let json = null;",
+                          "    try { json = res ? res.json() : null; } catch (e) { json = null; }",
+                          "    done(err ? 0 : res.code, json);",
+                          "  });",
+                          "}",
+                          "function uniqueEmail(prefix) {",
+                          "  return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '@example.com';",
+                          "}",
+                          "pmSet('scnRoleDirty', true);",
+                          "const path = '/users/' + pm.variables.get('scnUserId') + '/role', admin = pm.variables.get('adminToken');",
+                          "call('PATCH', path, admin, { role: 'ADMIN' }, function (c1) {",
+                          "  call('PATCH', path, admin, { role: 'USER' }, function (c2) {",
+                          "    pm.variables.set('scnPromoteCode', c1);",
+                          "    pm.variables.set('scnDemoteCode', c2);",
+                          "    if (c2 === 200) { pmUnset('scnRoleDirty'); }",
+                          "  });",
+                          "});"
+                        ]
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "pm.test('ADMIN promovió y degradó a A (HTTP 200)', function () {",
+                          "  pm.expect(pm.variables.get('scnPromoteCode')).to.eql(200);",
+                          "  pm.expect(pm.variables.get('scnDemoteCode')).to.eql(200);",
+                          "});"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "4. Último ADMIN",
+              "description": "RN-07. La degradación solo se intenta cuando existe exactamente un ADMIN.",
+              "item": [
+                {
+                  "name": "409 · El último ADMIN no puede perder el rol",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{baseUrl}}/api/users/{{adminId}}/role",
+                    "description": "Para la evidencia, ejecutar en una base de pruebas con solo el ADMIN del seed. El pre-request cuenta los ADMIN; si hay más de uno, envía ADMIN→ADMIN (sin efecto) y marca el caso como omitido.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"role\": \"USER\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const api = pm.variables.get('baseUrl') + '/api';",
+                          "function call(method, path, token, payload, done) {",
+                          "  const r = { url: api + path, method: method, header: [{ key: 'Content-Type', value: 'application/json' }] };",
+                          "  if (token) { r.header.push({ key: 'Authorization', value: 'Bearer ' + token }); }",
+                          "  if (payload) { r.body = { mode: 'raw', raw: JSON.stringify(payload) }; }",
+                          "  pm.sendRequest(r, function (err, res) {",
+                          "    let json = null;",
+                          "    try { json = res ? res.json() : null; } catch (e) { json = null; }",
+                          "    done(err ? 0 : res.code, json);",
+                          "  });",
+                          "}",
+                          "function uniqueEmail(prefix) {",
+                          "  return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '@example.com';",
+                          "}",
+                          "// Seguridad: solo intenta degradar al ADMIN si es el único. Si hay más, envía un cambio inocuo (ADMIN→ADMIN) y omite las aserciones.",
+                          "const admin = pm.variables.get('adminToken');",
+                          "pm.variables.set('scnSkipped', true);",
+                          "pm.request.body.update(JSON.stringify({ role: 'ADMIN' }));",
+                          "function countAdmins(page, acc) {",
+                          "  call('GET', '/users?page=' + page + '&limit=100', admin, null, function (code, r) {",
+                          "    if (code !== 200) { pm.variables.set('adminCount', 'desconocido'); return; }",
+                          "    const total = acc + r.items.filter(function (u) { return u.role === 'ADMIN'; }).length;",
+                          "    if (page * r.limit < r.total) { return countAdmins(page + 1, total); }",
+                          "    pm.variables.set('adminCount', total);",
+                          "    if (total === 1) {",
+                          "      pm.variables.set('scnSkipped', false);",
+                          "      pm.request.body.update(JSON.stringify({ role: 'USER' }));",
+                          "    } else {",
+                          "      console.log('Hay ' + total + ' ADMIN; ejecutar este caso en una base de pruebas con un único ADMIN.');",
+                          "    }",
+                          "  });",
+                          "}",
+                          "countAdmins(1, 0);"
+                        ]
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.variables.get('scnSkipped')) {",
+                          "  pm.test('Omitido: hay ' + pm.variables.get('adminCount') + ' ADMIN (requiere exactamente 1)', function () {",
+                          "    pm.response.to.have.status(200);",
+                          "    pm.expect(pm.response.json().role).to.eql('ADMIN');",
+                          "  });",
+                          "}",
+                          "pm.variables.set('scnSkipped', false);"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "200 · El ADMIN conserva su rol",
+                  "request": {
+                    "auth": {
+                      "type": "bearer",
+                      "bearer": [
+                        {
+                          "key": "token",
+                          "value": "{{adminToken}}",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/users/me",
+                    "description": ""
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "  pm.test('Sigue siendo ADMIN', function () { pm.expect(pm.response.json().role).to.eql('ADMIN'); });",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "5. Limpieza",
+              "description": "",
+              "item": [
+                {
+                  "name": "Limpiar variables del escenario",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": "{{baseUrl}}/api/health",
+                    "description": "Elimina del environment las variables temporales. La siguiente ejecución crea cuentas nuevas."
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+                          "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+                          "['scnToken', 'scnEmail', 'scnUserId', 'scnOtherEmail', 'scnRoleDirty']",
+                          "  .forEach(function (k) { pmUnset(k); });",
+                          "pm.variables.set('scnReady', false);",
+                          "pm.test('Variables temporales eliminadas', function () { pm.expect(pm.variables.get('scnToken')).to.not.be.ok; });"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+                  "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+                  "const api = pm.variables.get('baseUrl') + '/api';",
+                  "function call(method, path, token, payload, done) {",
+                  "  const r = { url: api + path, method: method, header: [{ key: 'Content-Type', value: 'application/json' }] };",
+                  "  if (token) { r.header.push({ key: 'Authorization', value: 'Bearer ' + token }); }",
+                  "  if (payload) { r.body = { mode: 'raw', raw: JSON.stringify(payload) }; }",
+                  "  pm.sendRequest(r, function (err, res) {",
+                  "    let json = null;",
+                  "    try { json = res ? res.json() : null; } catch (e) { json = null; }",
+                  "    done(err ? 0 : res.code, json);",
+                  "  });",
+                  "}",
+                  "function uniqueEmail(prefix) {",
+                  "  return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '@example.com';",
+                  "}",
+                  "// Garantiza dos cuentas desechables (A y B) con A en rol USER. 'Preparar' fuerza cuentas nuevas.",
+                  "const fresh = pm.info.requestName.indexOf('Preparar') !== -1;",
+                  "const admin = pm.variables.get('adminToken');",
+                  "if (pm.variables.get('scnRoleDirty') && pm.variables.get('scnUserId')) {",
+                  "  call('PATCH', '/users/' + pm.variables.get('scnUserId') + '/role', admin, { role: 'USER' }, function (code) {",
+                  "    if (code === 200) { pmUnset('scnRoleDirty'); }",
+                  "    ensureAccounts();",
+                  "  });",
+                  "} else { ensureAccounts(); }",
+                  "function ensureAccounts() {",
+                  "  if (!fresh && pm.variables.get('scnReady')) { return; }",
+                  "  if (fresh || !pm.variables.get('scnToken') || !pm.variables.get('scnOtherEmail')) { return createAccounts(); }",
+                  "  call('GET', '/users/me', pm.variables.get('scnToken'), null, function (code, me) {",
+                  "    if (code === 200 && me.role === 'USER' && me.id === pm.variables.get('scnUserId')) { pm.variables.set('scnReady', true); return; }",
+                  "    createAccounts();",
+                  "  });",
+                  "}",
+                  "function createAccounts() {",
+                  "  const password = 'TaskflowPostman123!';",
+                  "  const emailA = uniqueEmail('users-a'), emailB = uniqueEmail('users-b');",
+                  "  call('POST', '/auth/register', null, { name: 'Escenario Users A', email: emailA, password: password }, function (c1, a) {",
+                  "    if (c1 !== 201) { console.log('No se pudo registrar A: HTTP ' + c1); return; }",
+                  "    call('POST', '/auth/register', null, { name: 'Escenario Users B', email: emailB, password: password }, function (c2) {",
+                  "      if (c2 !== 201) { console.log('No se pudo registrar B: HTTP ' + c2); return; }",
+                  "      call('POST', '/auth/login', null, { email: emailA, password: password }, function (c3, login) {",
+                  "        if (c3 !== 200) { console.log('No se pudo iniciar sesión con A: HTTP ' + c3); return; }",
+                  "        pmSet('scnUserId', a.id);",
+                  "        pmSet('scnEmail', emailA);",
+                  "        pmSet('scnOtherEmail', emailB);",
+                  "        pmSet('scnToken', login.accessToken);",
+                  "        pm.variables.set('scnReady', true);",
+                  "      });",
+                  "    });",
+                  "  });",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Verificación común: el nombre de cada petición empieza con el código esperado (p. ej. '400 · ...').",
+                  "const match = pm.info.requestName.match(/^(\\d{3}) · /);",
+                  "if (match && !pm.variables.get('scnSkipped')) {",
+                  "  const expected = Number(match[1]);",
+                  "  pm.test('HTTP ' + expected, function () { pm.response.to.have.status(expected); });",
+                  "  if (expected >= 400) {",
+                  "    pm.test('Error con statusCode y message, sin trazas ni SQL', function () {",
+                  "      const e = pm.response.json();",
+                  "      pm.expect(e.statusCode).to.eql(expected);",
+                  "      pm.expect(e).to.have.property('message');",
+                  "      pm.expect(JSON.stringify(e)).not.to.match(/at .+\\.(js|ts):\\d+|QueryFailedError|SELECT |INSERT /);",
+                  "    });",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Integrante 2. Requiere adminPassword en el environment. Si falta baseUrl se usa la API desplegada; adminEmail por defecto es admin@taskflow.com. El pre-request de esta carpeta obtiene o renueva adminToken y accessToken cuando faltan o ya no son válidos.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// baseUrl: usa la API desplegada si el environment no la define; agrega https:// y quita /api o / finales.",
+              "let base = String(pm.variables.get('baseUrl') || 'https://compunet3-pandas-backendnestjs-production.up.railway.app').trim();",
+              "if (!/^https?:\\/\\//.test(base)) { base = 'https://' + base; }",
+              "base = base.replace(/\\/+$/, '').replace(/\\/api$/, '');",
+              "pm.variables.set('baseUrl', base);",
+              "if (!pm.variables.get('adminEmail')) { pm.variables.set('adminEmail', 'admin@taskflow.com'); }",
+              "function pmSet(k, v) { pm.environment.set(k, v); pm.variables.set(k, v); }",
+              "function pmUnset(k) { pm.environment.unset(k); pm.variables.set(k, ''); }",
+              "const api = pm.variables.get('baseUrl') + '/api';",
+              "function call(method, path, token, payload, done) {",
+              "  const r = { url: api + path, method: method, header: [{ key: 'Content-Type', value: 'application/json' }] };",
+              "  if (token) { r.header.push({ key: 'Authorization', value: 'Bearer ' + token }); }",
+              "  if (payload) { r.body = { mode: 'raw', raw: JSON.stringify(payload) }; }",
+              "  pm.sendRequest(r, function (err, res) {",
+              "    let json = null;",
+              "    try { json = res ? res.json() : null; } catch (e) { json = null; }",
+              "    done(err ? 0 : res.code, json);",
+              "  });",
+              "}",
+              "function uniqueEmail(prefix) {",
+              "  return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6) + '@example.com';",
+              "}",
+              "if (!pm.variables.get('usersSessionReady')) { ensureAdmin(function () { ensureUser(function () { pm.variables.set('usersSessionReady', true); }); }); }",
+              "function ensureAdmin(next) {",
+              "  call('GET', '/users/me', pm.variables.get('adminToken'), null, function (code, me) {",
+              "    if (code === 200 && me.role === 'ADMIN') { pmSet('adminId', me.id); pm.variables.set('adminStatus', 'ok'); return next(); }",
+              "    const email = pm.variables.get('adminEmail'), password = pm.variables.get('adminPassword');",
+              "    if (!email || !password) { pm.variables.set('adminStatus', 'Falta la variable adminPassword en el environment activo (o no está guardado)'); return next(); }",
+              "    call('POST', '/auth/login', null, { email: email, password: password }, function (c2, login) {",
+              "      if (c2 !== 200) { pm.variables.set('adminStatus', 'Login de ' + email + ' en ' + api + ' respondió HTTP ' + c2 + (c2 === 401 ? ': la contraseña no coincide o el ADMIN no existe (falta correr el seed en esa base)' : '')); return next(); }",
+              "      pmSet('adminToken', login.accessToken);",
+              "      call('GET', '/users/me', login.accessToken, null, function (c3, admin) {",
+              "        if (c3 === 200) { pmSet('adminId', admin.id); pm.variables.set('adminStatus', 'ok'); }",
+              "        next();",
+              "      });",
+              "    });",
+              "  });",
+              "}",
+              "function ensureUser(next) {",
+              "  call('GET', '/users/me', pm.variables.get('accessToken'), null, function (code, me) {",
+              "    if (code === 200) { pmSet('userId', me.id); return next(); }",
+              "    const email = uniqueEmail('postman-users'), password = 'TaskflowPostman123!';",
+              "    call('POST', '/auth/register', null, { name: 'Postman User', email: email, password: password }, function (c2, user) {",
+              "      if (c2 !== 201) { console.log('No se pudo registrar el usuario USER: HTTP ' + c2); return next(); }",
+              "      pmSet('userEmail', email);",
+              "      pmSet('userPassword', password);",
+              "      pmSet('userId', user.id);",
+              "      call('POST', '/auth/login', null, { email: email, password: password }, function (c3, login) {",
+              "        if (c3 === 200) { pmSet('accessToken', login.accessToken); }",
+              "        next();",
+              "      });",
+              "    });",
+              "  });",
+              "}"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
