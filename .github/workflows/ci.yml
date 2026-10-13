@@ -38,6 +38,8 @@ jobs:
       DB_DATABASE_TEST: nest_backend_test
       JWT_SECRET: ci_secret_not_for_production
       JWT_EXPIRATION: 1h
+      SEED_ADMIN_PASSWORD: ci_admin_password_only
+      SEED_USER_PASSWORD: ci_user_password_only
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -68,3 +70,23 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Validate integrated Postman collection
+        run: |
+          npm run postman:build
+          git diff --exit-code -- postman/backend-api.postman_collection.json
+
+      - name: Seed and verify Tasks through Postman
+        run: |
+          npm run railway:predeploy
+          node dist/main.js > /tmp/taskflow-api.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:3000/api/health > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://localhost:3000/api/health > /dev/null
+          npm run postman:tasks

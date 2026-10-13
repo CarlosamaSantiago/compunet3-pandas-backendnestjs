@@ -23,7 +23,7 @@ import type { AppConfiguration } from '../config/configuration';
           database: database.name,
           autoLoadEntities: true,
           synchronize: false,
-          migrationsRun: true,
+          migrationsRun: false,
           migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
           retryAttempts: 5,
           retryDelay: 2_000,
