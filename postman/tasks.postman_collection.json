@@ -1,0 +1,1616 @@
+{
+  "info": {
+    "_postman_id": "392f95ac-4e82-4832-ad0c-414c19630cab",
+    "name": "TaskFlow - Integrante 3 - Tasks y Health",
+    "description": "Integrante 3: Tasks, Health y escenarios de propiedad, filtros, paginación, validación y ADMIN. Preparación crea dos USER exclusivos; requiere adminEmail/adminPassword locales. Limpia tareas y revoca las dos sesiones de prueba. Las cuentas permanecen porque no hay endpoint de eliminación de usuarios.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "0. Preparación de usuarios de tareas",
+          "item": [
+            {
+              "name": "Preparar Propietario",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/register",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Postman Tasks\",\n  \"email\": \"{{tasksOwnerEmail}}\",\n  \"password\": \"TasksScenario123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.environment.set('tasksOwnerEmail', 'tasks-'+pm.variables.replaceIn('{{$guid}}')+'@example.com');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                      "pm.environment.set('tasksOwnerId', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Login Propietario",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/login",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{tasksOwnerEmail}}\",\n  \"password\": \"TasksScenario123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.environment.set('tasksOwnerToken', pm.response.json().accessToken);"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Preparar Otro usuario",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/register",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Postman Tasks\",\n  \"email\": \"{{tasksOtherEmail}}\",\n  \"password\": \"TasksScenario123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.environment.set('tasksOtherEmail', 'tasks-'+pm.variables.replaceIn('{{$guid}}')+'@example.com');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                      "pm.environment.set('tasksOtherId', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Login Otro usuario",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/login",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{tasksOtherEmail}}\",\n  \"password\": \"TasksScenario123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.environment.set('tasksOtherToken', pm.response.json().accessToken);"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Login ADMIN para tareas",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/auth/login",
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.environment.set('tasksAdminToken', pm.response.json().accessToken);"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "1. CRUD, filtros y paginación",
+          "item": [
+            {
+              "name": "Crear tarea propia",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"  Preparar entrega Tasks  \",\n  \"status\": \"PENDING\",\n  \"priority\": \"HIGH\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                      "pm.environment.set('taskId', pm.response.json().id);",
+                      "pm.test('Propietario y valores persistidos', function () { const b=pm.response.json(); pm.expect(b.userId).to.eql(pm.environment.get('tasksOwnerId')); pm.expect(b.title).to.eql('Preparar entrega Tasks'); pm.expect(b.status).to.eql('PENDING'); pm.expect(b.priority).to.eql('HIGH'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Crear segunda tarea propia",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Segunda tarea\",\n  \"status\": \"COMPLETED\",\n  \"priority\": \"LOW\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                      "pm.environment.set('tasksSecondId', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Crear tarea de otro usuario",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOtherToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Tarea ajena\",\n  \"status\": \"PENDING\",\n  \"priority\": \"HIGH\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                      "pm.environment.set('tasksForeignId', pm.response.json().id);"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Listar solo tareas propias",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Dos tareas propias y ninguna ajena', function () { const b=pm.response.json(); pm.expect(b.total).to.eql(2); pm.expect(b.page).to.eql(1); pm.expect(b.limit).to.eql(10); b.items.forEach(t=>pm.expect(t.userId).to.eql(pm.environment.get('tasksOwnerId'))); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Filtrar status=PENDING",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks?status=PENDING",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Filtro exacto', function () { const b=pm.response.json(); pm.expect(b.total).to.eql(1); pm.expect(b.items.map(t=>t.id)).to.eql([pm.environment.get('taskId')]); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Filtrar priority=HIGH",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks?priority=HIGH",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Filtro exacto', function () { const b=pm.response.json(); pm.expect(b.total).to.eql(1); pm.expect(b.items.map(t=>t.id)).to.eql([pm.environment.get('taskId')]); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Filtrar status=PENDING&priority=HIGH",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks?status=PENDING&priority=HIGH",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Filtro exacto', function () { const b=pm.response.json(); pm.expect(b.total).to.eql(1); pm.expect(b.items.map(t=>t.id)).to.eql([pm.environment.get('taskId')]); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Primera página",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks?page=1&limit=1",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.environment.set('tasksFirstPageId', pm.response.json().items[0].id);",
+                      "pm.test('Página y total', function () { const b=pm.response.json(); pm.expect(b.total).to.eql(2); pm.expect(b.items.length).to.eql(1); pm.expect(b.page).to.eql(1); pm.expect(b.limit).to.eql(1); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Segunda página sin repetir",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks?page=2&limit=1",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Paginación sin duplicados', function () { const b=pm.response.json(); pm.expect(b.total).to.eql(2); pm.expect(b.items.length).to.eql(1); pm.expect(b.page).to.eql(2); pm.expect(b.items[0].id).not.to.eql(pm.environment.get('tasksFirstPageId')); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Consultar tarea propia",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Detalle correcto', function () { pm.expect(pm.response.json().id).to.eql(pm.environment.get('taskId')); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Actualizar tarea propia",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Entrega validada\",\n  \"status\": \"IN_PROGRESS\",\n  \"priority\": \"MEDIUM\",\n  \"description\": \"Verificada\",\n  \"dueDate\": \"2026-10-13T12:00:00.000Z\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Cambios aplicados', function () { const b=pm.response.json(); pm.expect(b.title).to.eql('Entrega validada'); pm.expect(b.status).to.eql('IN_PROGRESS'); pm.expect(b.priority).to.eql('MEDIUM'); pm.expect(b.dueDate).to.eql('2026-10-13T12:00:00.000Z'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Limpiar campos opcionales",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": null,\n  \"dueDate\": null\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Campos limpiados sin perder el título', function () { const b=pm.response.json(); pm.expect(b.description).to.eql(null); pm.expect(b.dueDate).to.eql(null); pm.expect(b.title).to.eql('Entrega validada'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "2. Validación, propiedad y roles",
+          "item": [
+            {
+              "name": "[401] Sin JWT",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(401); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Título vacío",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"   \"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Prioridad inválida",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Inválida\",\n  \"priority\": \"URGENT\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Estado inválido",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Inválida\",\n  \"status\": \"DONE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] userId al crear",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Inválida\",\n  \"userId\": \"{{tasksOtherId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] userId al actualizar",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"userId\": \"{{tasksOtherId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] PATCH vacío",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] UUID inválido",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/not-a-uuid",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Página inválida",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks?page=0",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Límite inválido",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks?limit=101",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[400] Filtro inválido",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks?status=INVALID",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(400); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[404] Tarea inexistente",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/00000000-0000-4000-8000-000000000000",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(404); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[404] Consultar tarea ajena",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/{{tasksForeignId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(404); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[404] Modificar tarea ajena",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks/{{tasksForeignId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Ajena\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(404); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[404] Eliminar tarea ajena",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/{{tasksForeignId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(404); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[404] ADMIN no edita tareas ajenas",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/tasks/{{tasksForeignId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksAdminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Ajena\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(404); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[403] USER en listado ADMIN",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/admin/tasks",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 403', function () { pm.response.to.have.status(403); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(403); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "ADMIN lista tareas y propietarios públicos",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/admin/tasks?page=1&limit=100",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksAdminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Incluye las tareas de ambos propietarios sin campos sensibles', function () { const b=pm.response.json(); const ids=b.items.map(t=>t.id); ['taskId','tasksSecondId','tasksForeignId'].forEach(k=>pm.expect(ids).to.include(pm.environment.get(k))); b.items.forEach(t=>{pm.expect(t.user.id).to.eql(t.userId); pm.expect(Object.keys(t.user).sort()).to.eql(['email','id','name']);}); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "ADMIN pagina tareas",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/admin/tasks?page=1&limit=1",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksAdminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "pm.test('Página de ADMIN', function () { const b=pm.response.json(); pm.expect(b.total).to.be.at.least(3); pm.expect(b.items.length).to.eql(1); pm.expect(b.page).to.eql(1); pm.expect(b.limit).to.eql(1); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "3. Limpieza",
+          "item": [
+            {
+              "name": "Eliminar tarea propia",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });",
+                      "pm.test('Sin cuerpo', function () { pm.expect(pm.response.text()).to.eql(''); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "[404] Tarea ya eliminada",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/{{taskId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                      "pm.test('Error consistente sin campos sensibles', function () { const b=pm.response.json(); pm.expect(b.statusCode).to.eql(404); pm.expect(b).to.have.property('message'); pm.expect(b).not.to.have.property('stack'); pm.expect(b).not.to.have.property('passwordHash'); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Eliminar segunda tarea",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/{{tasksSecondId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Eliminar tarea del otro usuario",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": "{{baseUrl}}/api/tasks/{{tasksForeignId}}",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOtherToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Cerrar sesión propietario",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{baseUrl}}/api/auth/logout",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOwnerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Cerrar sesión otro usuario",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{baseUrl}}/api/auth/logout",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tasksOtherToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 204', function () { pm.response.to.have.status(204); });"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Limpiar variables de Tasks",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/health",
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                      "['tasksOwnerId','tasksOwnerEmail','tasksOwnerToken','tasksOtherId','tasksOtherEmail','tasksOtherToken','tasksAdminToken','tasksSecondId','tasksForeignId','tasksFirstPageId','taskId'].forEach(k=>pm.environment.unset(k));"
+                    ]
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('API disponible', function () { pm.expect(pm.response.json()).to.eql({status:'ok'}); });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -25,3 +25,6 @@ import { UsersModule } from './modules/users/users.module';
   ],
 })
 export class AppModule {}
+/*
+ * Trying to force a commit to see if the pipeline will run. This is a test commit and should be ignored. 
+*/

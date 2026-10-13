@@ -24,6 +24,7 @@ Completar los nombres y perfiles antes de la entrega:
 - Node.js 22 o superior y npm.
 - Docker Desktop u otro runtime compatible con Docker Compose.
 - PostgreSQL puede ejecutarse mediante el Compose incluido.
+- En Windows x64, instalar [Microsoft Visual C++ Redistributable x64](https://learn.microsoft.com/es-es/cpp/windows/latest-supported-vc-redist). El resolvedor nativo de Jest necesita este runtime. Si Node encuentra `ts-jest` pero Jest informa que falta y `unrs-resolver` devuelve `Cannot find native binding`, comprobar el runtime antes de reinstalar dependencias. Se puede instalar con `winget install --id Microsoft.VCRedist.2015+.x64 --exact --source winget`.
 
 ## Instalación y ejecución
 
@@ -105,9 +106,16 @@ Los DTOs validan entradas y el `ValidationPipe` global transforma valores, aplic
 
 ## Postman
 
-Importa `postman/backend-api.postman_collection.json` y `postman/local.postman_environment.json`, y selecciona **Backend API - Local**. La colección tiene 14 requests correspondientes a los endpoints de la tabla. Ejecuta `Register USER` y `Login (USER or ADMIN)` para guardar `userId` y `accessToken`; luego puedes probar perfil y tareas.
+Cada integrante edita su colección: Auth (1), Users (2), Tasks y Health (3). Ejecuta `npm run postman:build` para generar `postman/backend-api.postman_collection.json`: 97 peticiones que cubren los 14 endpoints, incluyendo casos positivos y negativos. Importa también `postman/local.postman_environment.json` y configura las credenciales ADMIN localmente.
 
-Las solicitudes marcadas ADMIN requieren una cuenta `ADMIN` existente. Configura `adminEmail` y `adminPassword`, cambia `tokenTarget` a `admin` y ejecuta Login para guardar `adminToken`. El registro público no crea administradores. Ejecuta Logout al final porque revoca el token usado.
+`npm run postman:tasks` ejecuta Tasks con Newman contra la API local. Usa una base de pruebas: crea dos cuentas y limpia las tareas al terminar. Preparación, variables y reparto en [postman/README.md](postman/README.md).
+
+## Despliegue
+
+- [API pública](https://compunet3-pandas-backendnestjs-production.up.railway.app/api/health).
+- [Swagger](https://compunet3-pandas-backendnestjs-production.up.railway.app/api/docs).
+
+Railway despliega desde main con Wait for CI activado, según confirmación del responsable. El predeploy aplica migrations y seed; cualquier error impide continuar. La API arranca con el esquema ya migrado. Variables, arquitectura y verificaciones pendientes en [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Pruebas y calidad
 
@@ -134,7 +142,7 @@ Verificación local del 12 de octubre de 2026: 87 pruebas unitarias y 47 E2E apr
 
 La cobertura unitaria fue 95.93% statements, 87.82% branches, 89.28% functions y 96.82% lines. Jest exige un mínimo global de 80% en las cuatro métricas; los comandos fallan si no encuentran pruebas. Se conservan las exclusiones de módulos, arranque, configuración y scripts de base de datos: el montaje de Nest y las migraciones se verifican mediante E2E; el seed se validó por ejecución repetida en PostgreSQL. Estas cifras corresponden a la cobertura unitaria, no a una combinación con E2E.
 
-CI ejecuta instalación, lint, unitarias, migraciones, E2E, cobertura y build. La validación de GitHub Actions quedará pendiente hasta publicar la rama; los resultados anteriores son de ejecución local.
+CI ejecuta instalación, lint, unitarias, migraciones, E2E, cobertura, build, validación de la colección integrada y escenarios Tasks con Newman. La validación de GitHub Actions quedará pendiente hasta publicar la rama; los resultados anteriores son de ejecución local.
 
 ## Estructura principal
 
