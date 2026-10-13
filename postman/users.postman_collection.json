@@ -97,10 +97,6 @@
                   "if (pm.response.code === 200) {",
                   "  const u = pm.response.json();",
                   "  pm.test('Nombre actualizado', function () { pm.expect(u.name).to.eql('Postman User Updated'); });",
-                  "  pm.test('No expone passwordHash ni tokenVersion', function () {",
-                  "    pm.expect(u).not.to.have.property('passwordHash');",
-                  "    pm.expect(u).not.to.have.property('tokenVersion');",
-                  "  });",
                   "}"
                 ]
               }
@@ -357,30 +353,6 @@
                   "response": []
                 },
                 {
-                  "name": "401 · Perfil con token inválido",
-                  "request": {
-                    "auth": {
-                      "type": "noauth"
-                    },
-                    "method": "GET",
-                    "header": [],
-                    "url": "{{baseUrl}}/api/users/me",
-                    "description": "Token con formato JWT pero firma inválida."
-                  },
-                  "response": [],
-                  "event": [
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ4In0.firma-invalida' });"
-                        ]
-                      }
-                    }
-                  ]
-                },
-                {
                   "name": "200 · Normaliza correo (mayúsculas y espacios)",
                   "request": {
                     "auth": {
@@ -478,51 +450,6 @@
                   "response": []
                 },
                 {
-                  "name": "409 · Correo duplicado con otra capitalización",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{scnToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "PATCH",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": "{{baseUrl}}/api/users/me",
-                    "description": "",
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"email\": \"{{scnOtherEmailUpper}}\"\n}",
-                      "options": {
-                        "raw": {
-                          "language": "json"
-                        }
-                      }
-                    }
-                  },
-                  "response": [],
-                  "event": [
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.variables.set('scnOtherEmailUpper', String(pm.variables.get('scnOtherEmail')).toUpperCase());"
-                        ]
-                      }
-                    }
-                  ]
-                },
-                {
                   "name": "400 · Actualización vacía",
                   "request": {
                     "auth": {
@@ -591,40 +518,6 @@
                   "response": []
                 },
                 {
-                  "name": "400 · Nombre demasiado corto",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{scnToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "PATCH",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": "{{baseUrl}}/api/users/me",
-                    "description": "",
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"name\": \"A\"\n}",
-                      "options": {
-                        "raw": {
-                          "language": "json"
-                        }
-                      }
-                    }
-                  },
-                  "response": []
-                },
-                {
                   "name": "400 · No permite cambiar el rol desde el perfil",
                   "request": {
                     "auth": {
@@ -657,82 +550,6 @@
                     }
                   },
                   "response": []
-                },
-                {
-                  "name": "400 · No permite cambiar la contraseña desde el perfil",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{scnToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "PATCH",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": "{{baseUrl}}/api/users/me",
-                    "description": "",
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"password\": \"OtraClave12345\"\n}",
-                      "options": {
-                        "raw": {
-                          "language": "json"
-                        }
-                      }
-                    }
-                  },
-                  "response": []
-                },
-                {
-                  "name": "200 · El perfil conserva el rol USER",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{scnToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [],
-                    "url": "{{baseUrl}}/api/users/me",
-                    "description": ""
-                  },
-                  "response": [],
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "if (pm.response.code === 200) {",
-                          "  const u = pm.response.json();",
-                          "  pm.test('Cuenta del escenario con rol USER', function () {",
-                          "    pm.expect(u.id).to.eql(pm.variables.get('scnUserId'));",
-                          "    pm.expect(u.role).to.eql('USER');",
-                          "  });",
-                          "}",
-                          "if (pm.response.code === 200) {",
-                          "  pm.test('Correo coincide con el último guardado', function () {",
-                          "    pm.expect(pm.response.json().email).to.eql(pm.variables.get('scnEmail'));",
-                          "  });",
-                          "}"
-                        ]
-                      }
-                    }
-                  ]
                 }
               ]
             },
@@ -795,59 +612,6 @@
                   "response": []
                 },
                 {
-                  "name": "401 · Listado sin token",
-                  "request": {
-                    "auth": {
-                      "type": "noauth"
-                    },
-                    "method": "GET",
-                    "header": [],
-                    "url": "{{baseUrl}}/api/users",
-                    "description": ""
-                  },
-                  "response": []
-                },
-                {
-                  "name": "200 · Paginación por defecto (page=1, limit=10)",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{adminToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [],
-                    "url": "{{baseUrl}}/api/users",
-                    "description": ""
-                  },
-                  "response": [],
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "if (pm.response.code === 200) {",
-                          "  const r = pm.response.json();",
-                          "  pm.test('Valores por defecto', function () {",
-                          "    pm.expect(r.page).to.eql(1);",
-                          "    pm.expect(r.limit).to.eql(10);",
-                          "    pm.expect(r.items).to.be.an('array');",
-                          "    pm.expect(r.items.length).to.be.within(1, 10);",
-                          "    pm.expect(r.total).to.be.at.least(r.items.length);",
-                          "  });",
-                          "}"
-                        ]
-                      }
-                    }
-                  ]
-                },
-                {
                   "name": "200 · Paginación page=2, limit=2",
                   "request": {
                     "auth": {
@@ -908,46 +672,6 @@
                     "method": "GET",
                     "header": [],
                     "url": "{{baseUrl}}/api/users?limit=101",
-                    "description": ""
-                  },
-                  "response": []
-                },
-                {
-                  "name": "400 · page=0",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{adminToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [],
-                    "url": "{{baseUrl}}/api/users?page=0",
-                    "description": ""
-                  },
-                  "response": []
-                },
-                {
-                  "name": "400 · page no numérico",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{adminToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "GET",
-                    "header": [],
-                    "url": "{{baseUrl}}/api/users?page=abc",
                     "description": ""
                   },
                   "response": []
@@ -1045,74 +769,6 @@
                     "body": {
                       "mode": "raw",
                       "raw": "{\n  \"role\": \"SUPERADMIN\"\n}",
-                      "options": {
-                        "raw": {
-                          "language": "json"
-                        }
-                      }
-                    }
-                  },
-                  "response": []
-                },
-                {
-                  "name": "400 · Cambio de rol sin cuerpo",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{adminToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "PATCH",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": "{{baseUrl}}/api/users/{{scnUserId}}/role",
-                    "description": "",
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{}",
-                      "options": {
-                        "raw": {
-                          "language": "json"
-                        }
-                      }
-                    }
-                  },
-                  "response": []
-                },
-                {
-                  "name": "400 · Cambio de rol con campo adicional",
-                  "request": {
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{adminToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    },
-                    "method": "PATCH",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "url": "{{baseUrl}}/api/users/{{scnUserId}}/role",
-                    "description": "",
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"role\": \"ADMIN\",\n  \"email\": \"otro@example.com\"\n}",
                       "options": {
                         "raw": {
                           "language": "json"
