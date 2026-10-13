@@ -1,200 +1,229 @@
-# Informe final del proyecto TaskFlow
+# TaskFlow — Informe final
 
-**Asignatura:** Computación en Internet III
-**Institución:** Universidad Icesi
-**Equipo:** `[Completar nombres de los tres integrantes]`
-**Fecha de entrega:** `[Completar]`
+Oct 13, 2026 · @Josh
 
-> Este informe reúne las secciones de Users/roles y Tasks, junto con la verificación local de integración. La sección de Auth y los datos completos del equipo siguen pendientes de validación por sus responsables.
+## 1. Resumen y alcance
 
-## 1. Resumen del proyecto
+TaskFlow es una API REST en NestJS que gestiona usuarios, autenticación con JWT, roles (USER y ADMIN) y tareas personales, con persistencia en PostgreSQL mediante TypeORM. Expone 14 endpoints bajo el prefijo `/api`, documentados en Swagger, y está desplegada en Railway con HTTPS.
 
-TaskFlow es una API REST construida con NestJS, TypeScript, PostgreSQL y TypeORM. La API permite registrar e identificar usuarios mediante JWT, consultar y actualizar perfiles, administrar roles, y crear y administrar tareas asociadas a un usuario. La documentación HTTP se publica con Swagger/OpenAPI y la colección compartida de solicitudes se entrega en Postman.
+| Elemento | Detalle |
+| --- | --- |
+| Curso | Computación en Internet III, Universidad Icesi |
+| Stack | Node.js 24 LTS (mínimo 22), TypeScript, NestJS 11, PostgreSQL 17, TypeORM 0.3 |
+| Seguridad | JWT con Passport, hash bcrypt (10 rondas), validación con class-validator |
+| Calidad | Jest, Supertest, ESLint, Prettier, Husky, GitHub Actions |
+| API desplegada | [/api/health](https://compunet3-pandas-backendnestjs-production.up.railway.app/api/health) |
+| Swagger | [/api/docs](https://compunet3-pandas-backendnestjs-production.up.railway.app/api/docs) |
 
-La arquitectura organiza las rutas en módulos. Los controladores reciben solicitudes HTTP y delegan lógica a servicios; los servicios acceden a PostgreSQL mediante repositorios de TypeORM. DTOs describen y validan los datos de entrada. Guards separan autenticación (verificar quién realiza la solicitud) de autorización (verificar qué acciones permite su rol).
+**Equipo y responsabilidades**
 
-## 2. Arquitectura funcional
+| Integrante | Responsabilidad | Nombre | Usuario de GitHub |
+| --- | --- | --- | --- |
+| 1 | Autenticación, JWT, logout y pruebas de Auth | Joshua Sayur | joshsg9 |
+| 2 | Usuarios, roles, entidad User y pruebas de autorización | Maria Jose | Mariajj07 |
+| 3 | Tareas, entidad Task, propiedad, filtros y pruebas de Tasks | Santiago Carlosama | CarlosamaSantiago |
 
-El flujo general de una solicitud protegida es:
+Fuera de alcance, según el enunciado: frontend, equipos, proyectos, comentarios, adjuntos, notificaciones, correo, chat, inteligencia artificial y microservicios.
+
+## 2. Arquitectura y decisiones técnicas
+
+La API se organiza en cuatro módulos de NestJS (`auth`, `users`, `tasks`, `health`) con controladores, servicios, DTO y entidades separados; los guards y decoradores compartidos viven en `common`.
 
 ```text
-Cliente
-  → JwtAuthGuard y estrategia JWT
-  → usuario vigente cargado desde PostgreSQL en request.user
-  → RolesGuard, si la ruta requiere ADMIN
-  → ValidationPipe y DTO
-  → Controller
-  → Service
-  → Repository de TypeORM
-  → PostgreSQL
-  → respuesta HTTP
+src/
+├── common/      decoradores (@Public, @Roles, @CurrentUser), guards (JwtAuthGuard, RolesGuard), enums
+├── config/      configuración tipada y validación del entorno con Joi
+├── database/    DataSource, migrations y seed
+└── modules/
+    ├── auth/    registro, login, logout y estrategia JWT
+    ├── users/   perfil, listado y cambio de rol (ADMIN)
+    ├── tasks/   CRUD propio y listado global (ADMIN)
+    └── health/  comprobación de disponibilidad
 ```
 
-La entidad `User` contiene UUID, nombre, correo único, hash de contraseña, rol, versión de token y fechas de auditoría. La entidad `Task` pertenece a un `User` mediante una relación muchos-a-uno; la eliminación del usuario elimina sus tareas por cascada según la relación y la clave foránea de la migración.
-
-La configuración de TypeORM mantiene desactivados `synchronize` y la ejecución automática de migraciones. Los cambios de esquema se aplican mediante migraciones versionadas.
-
-## 3. Aporte del Integrante 1: autenticación
-
-**Responsable:** `[Nombre y usuario GitHub del Integrante 1]`
-
-**Estado de esta sección:** pendiente de completar o validar por el integrante responsable.
-
-### 3.1 Sección por completar
-
-`[Describir decisiones e implementación de registro, login, logout, hashing de contraseñas, firma/verificación JWT, estrategia Passport, validación de tokenVersion y pruebas de Auth. Incluir resultados de pruebas ejecutadas por el Integrante 1.]`
-
-### 3.2 Contrato observado con Users
-
-El código de Auth utiliza `UsersService.create` para registrar, `findByEmail` para buscar el usuario durante login, `findById` para cargar el usuario de la base al validar el token e `incrementTokenVersion` para invalidar tokens durante logout. La estrategia JWT retorna el usuario cargado, de modo que `request.user.role` refleja el rol actual persistido y no un rol antiguo copiado al emitir el token.
-
-> `[El Integrante 1 debe confirmar que este resumen coincide con la versión final integrada de Auth.]`
-
-## 4. Aporte del Integrante 2: usuarios, roles, documentación y pruebas
-
-**Responsable:** `[Nombre y usuario GitHub del Integrante 2]`
-
-### 4.1 Modelo de usuario
-
-La entidad `User` de TypeORM representa la tabla `users` y define:
-
-- `id`: UUID generado y llave primaria.
-- `name`: texto entre 2 y 100 caracteres.
-- `email`: texto único para identificar cuentas.
-- `passwordHash`: almacenamiento interno del hash; no se implementa hashing en Users y la columna no se selecciona por defecto.
-- `role`: enum limitado a `USER` y `ADMIN`, con `USER` predeterminado.
-- `tokenVersion`: entero que Auth usa para invalidar tokens.
-- `createdAt` y `updatedAt`: marcas de tiempo administradas por TypeORM.
-
-Las respuestas HTTP de Users se construyen como objetos públicos con id, nombre, correo, rol y fechas. No devuelven `passwordHash` ni `tokenVersion`.
-
-### 4.2 Servicios de Users
-
-`UsersService` contiene las operaciones compartidas con Auth y las operaciones HTTP de usuarios:
-
-- `findByEmail(email)` consulta por correo y selecciona expresamente `passwordHash` para el login.
-- `findById(id)` carga el usuario actual; el hash se excluye salvo que se solicite explícitamente.
-- `create(input)` guarda el usuario y aplica rol `USER` cuando no se proporciona rol.
-- `incrementTokenVersion(userId)` incrementa en PostgreSQL la versión del token.
-- `getProfile(userId)` obtiene perfil propio y devuelve una proyección pública.
-- `updateProfile(userId, input)` actualiza solamente nombre/correo; un correo duplicado se transforma en HTTP 409.
-- `listUsers(page, limit)` devuelve resultados paginados con campos públicos.
-- `updateRole(userId, role)` busca y actualiza el rol dentro de una transacción. Usa bloqueo para serializar cambios y rechaza retirar el rol del último ADMIN con HTTP 409.
-
-### 4.3 Autorización y rutas
-
-`@Roles(Role.ADMIN)` declara los roles requeridos. `RolesGuard` compara esos roles con el usuario autenticado presente en `request.user`; una cuenta USER en una ruta exclusiva de ADMIN recibe HTTP 403. La autenticación continúa siendo responsabilidad del guard JWT de Auth.
-
-| Método y ruta               | Acceso      | Función                         |
-| --------------------------- | ----------- | ------------------------------- |
-| `GET /api/users/me`         | Autenticado | Consultar perfil propio.        |
-| `PATCH /api/users/me`       | Autenticado | Actualizar nombre y/o correo.   |
-| `GET /api/users`            | ADMIN       | Listar usuarios con paginación. |
-| `PATCH /api/users/:id/role` | ADMIN       | Cambiar el rol de una cuenta.   |
-
-Los DTOs de Users validan y transforman el perfil, parámetros de paginación y rol. Los campos adicionales son rechazados por el `ValidationPipe` global. El rol no forma parte del DTO de perfil. El UUID de cambio de rol debe ser válido; un usuario inexistente da 404.
-
-### 4.4 Swagger
-
-Los endpoints de Users se documentan con Bearer auth, operaciones, parámetros, cuerpos, modelos de respuestas públicas y errores HTTP esperados. `UserResponseDto` describe campos públicos; `PaginatedUsersResponseDto` describe `items`, `total`, `page` y `limit`.
-
-### 4.5 Colección Postman
-
-La colección compartida contiene 14 solicitudes para Health, Auth, Users, Tasks y cierre de sesión. El environment declara `baseUrl`, `accessToken`, `adminToken`, `userId` y `taskId`, además de variables auxiliares para inicio de sesión. Los scripts comprueban respuestas exitosas, guardan token e identificadores devueltos y limpian `accessToken` tras logout.
-
-El registro público solo crea USER. Para probar solicitudes ADMIN se necesita una cuenta ADMIN existente y cargar sus credenciales localmente en las variables del environment; no se guardan credenciales reales en el repositorio.
-
-### 4.6 Pruebas y resultados
-
-Las pruebas unitarias específicas de Users/roles se encuentran en:
-
-- `src/modules/users/users.service.spec.ts`
-- `src/modules/users/users.controller.spec.ts`
-- `src/modules/users/dto/users-dtos.spec.ts`
-- `src/common/guards/roles.guard.spec.ts`
-
-Cubren búsqueda y creación, perfil, duplicidad de correo, exclusión de campos sensibles, paginación, cambio de roles, último ADMIN, DTOs inválidos y acceso denegado por rol.
-
-Resultados observados en la rama final de pruebas/documentación al 11 de octubre de 2026:
-
-| Verificación             | Resultado                                                           |
-| ------------------------ | ------------------------------------------------------------------- |
-| ESLint                   | Correcto.                                                           |
-| Unit tests               | 72 pruebas en 7 suites aprobadas (39 de Users/roles y 33 de Tasks). |
-| E2E                      | No hay suites E2E actualmente; el comando indica “No tests found”.  |
-| Build                    | Correcto.                                                           |
-| Coverage UsersService    | 100% statements, branches, functions y lines.                       |
-| Coverage UsersController | 100% statements, branches, functions y lines.                       |
-| Coverage RolesGuard      | 100% statements, branches, functions y lines.                       |
-| Coverage global          | 72.9% statements, 73.91% branches, 72.28% functions y 74.33% lines. |
-
-Estos resultados corresponden a la revisión del 11 de octubre. La verificación integrada del 12 de octubre, después de incorporar las pruebas de Auth y Tasks, se presenta en la sección 5.3 y supera el umbral del 80%.
-
-## 5. Aporte del Integrante 3: tareas
-
-**Responsable:** Integrante 3, autor Git `sCarlosama`. Nombre completo pendiente de incorporar a la tabla del equipo.
-
-### 5.1 Modelo y propiedad
-
-`Task` contiene UUID, título (1 a 120 caracteres tras recortar espacios), descripción opcional (máximo 1.000), estado (`PENDING`, `IN_PROGRESS`, `COMPLETED`), prioridad (`LOW`, `MEDIUM`, `HIGH`), fecha límite ISO 8601 opcional, `userId` y fechas de auditoría. Los valores iniciales son `PENDING` y `MEDIUM`.
-
-La migración crea los enums, índices y una clave foránea hacia `users` con `ON DELETE CASCADE`. El servidor toma el propietario del usuario autenticado. El ValidationPipe rechaza `userId` enviado por el cliente tanto al crear como al actualizar. Las consultas y modificaciones filtran simultáneamente por id de tarea y propietario; una tarea ajena o inexistente devuelve 404, incluso para un ADMIN.
-
-### 5.2 Endpoints y validación
-
-| Método y ruta | Parámetros/cuerpo | Respuesta |
+| Decisión | Cómo se implementó | Por qué |
 | --- | --- | --- |
-| `POST /api/tasks` | Título obligatorio; descripción, estado, prioridad y fecha opcionales | 201, tarea creada |
-| `GET /api/tasks` | `status`, `priority`, `page`, `limit` opcionales | 200, `items`, `total`, `page`, `limit` |
-| `GET /api/tasks/:id` | UUID de tarea propia | 200, tarea; 404 si es ajena o inexistente |
-| `PATCH /api/tasks/:id` | UUID y al menos un campo editable | 200, tarea actualizada |
-| `DELETE /api/tasks/:id` | UUID de tarea propia | 204 sin cuerpo |
-| `GET /api/admin/tasks` | ADMIN; `page`, `limit` opcionales | 200, página de tareas con id, nombre y correo del propietario |
+| Rutas protegidas por defecto | `JwtAuthGuard` registrado como `APP_GUARD`; las rutas públicas usan `@Public()` | Una ruta nueva nace protegida; olvidar un decorador no abre un endpoint |
+| Roles en el servidor | `@Roles(Role.ADMIN)` más `RolesGuard`, que compara con el usuario cargado de la base | El rol no se toma del JWT, así un cambio aplica de inmediato (RN-07) |
+| Validación global | `ValidationPipe` con `whitelist`, `transform` y `forbidNonWhitelisted` | Rechaza campos extra (por ejemplo `role` o `userId`) con 400 |
+| Entradas normalizadas | `@Transform` recorta espacios y pasa el correo a minúsculas | Evita duplicados por mayúsculas o espacios |
+| Esquema versionado | Migrations; `synchronize` y `migrationsRun` desactivados | La base se construye igual en local, CI y producción |
+| Configuración por entorno | Variables validadas al iniciar (`DB_*`, `JWT_SECRET` de mínimo 8 caracteres, `JWT_EXPIRATION`) | La API no arranca con un entorno incompleto |
+| Respuestas públicas | `passwordHash` con `select: false` y mapeo explícito a un tipo público | No se exponen `passwordHash` ni `tokenVersion` (RN-08) |
 
-Los listados usan `page=1`, `limit=10` y un máximo de 100. El orden es fecha de creación descendente y UUID descendente para desempatar. Todas las rutas exigen JWT (401); el listado global exige ADMIN (403). UUID, filtros, paginación y cuerpos inválidos producen 400. En PATCH, `null` permite borrar descripción y fecha límite.
+## 3. Autenticación y autorización
 
-Los E2E detectaron que `{}` recibía 200 porque el DTO transformado tenía propiedades con valor `undefined`. La corrección exige al menos un valor definido. La prueba de regresión falló antes del cambio y pasó después con 400.
+Cada petición autenticada se valida contra la base de datos, no solo contra el JWT: el servidor comprueba la firma, el vencimiento, la versión de sesión y el rol vigente del usuario.
 
-### 5.3 Pruebas y CI
+**Autenticación**
 
-`test/tasks.e2e-spec.ts` incorpora 29 casos con PostgreSQL real: CRUD, propiedad frente a otro USER y ADMIN, filtros individuales y combinados, paginación, rechazo de `userId`, JWT ausente, listado administrativo, validación, reinicio de Nest y restricciones de clave foránea/cascada. La preparación compartida exige una base terminada en `_test`, reconstruye el esquema usando las dos migraciones y verifica su repetición sin cambios. Las suites se ejecutan en serie.
+- **Registro.** La contraseña se guarda con bcrypt (10 rondas). El servicio nunca recibe un rol del cliente, así que toda cuenta pública queda como USER. Un correo repetido viola la restricción única de PostgreSQL (código 23505) y se responde 409.
+- **Login.** Compara la contraseña con bcrypt; si el correo no existe compara contra un hash falso para que el tiempo de respuesta no revele qué cuentas existen. El mismo mensaje, "Credenciales incorrectas" (401), cubre correo inexistente y contraseña errónea. Devuelve `accessToken`, `tokenType: Bearer` y `expiresIn` en segundos.
+- **JWT.** Lleva `sub` (id del usuario) y `tokenVersion`. La estrategia de Passport rechaza tokens vencidos, con firma inválida, de un usuario inexistente o con una `tokenVersion` distinta a la guardada (401, "Token inválido o revocado").
+- **Logout.** Incrementa `tokenVersion` del usuario y responde 204. Todos los tokens emitidos antes quedan inválidos en la siguiente petición.
 
-Verificación local del 12 de octubre de 2026:
+**Autorización**
 
-| Verificación | Resultado |
+| Regla | Mecanismo | Resultado |
+| --- | --- | --- |
+| Rutas de ADMIN (`GET /users`, `PATCH /users/:id/role`, `GET /admin/tasks`) | `@Roles(Role.ADMIN)` y `RolesGuard` | USER recibe 403 |
+| El rol se lee de la base en cada petición | `JwtStrategy.validate` devuelve el usuario cargado de PostgreSQL | Un cambio de rol aplica con el mismo token, sin volver a iniciar sesión |
+| El último ADMIN no pierde el rol | Transacción con bloqueo consultivo (`pg_advisory_xact_lock`) y bloqueo de fila; si solo hay un ADMIN, la degradación se rechaza | 409 "No se puede quitar el rol al último ADMIN"; el bloqueo evita que dos peticiones simultáneas lo eludan |
+| Propiedad de las tareas | Toda consulta filtra por `id` y `userId` del usuario autenticado | Una tarea ajena o inexistente devuelve 404; un ADMIN la ve en su listado general, pero no puede editarla ni eliminarla |
+| `userId` y `role` no vienen del cliente | `forbidNonWhitelisted` y DTO sin esos campos | 400 si se envían |
+
+## 4. Endpoints
+
+Los 14 endpoints usan el prefijo `/api`. Las rutas autenticadas exigen `Authorization: Bearer <accessToken>`; Swagger los documenta con ejemplos en `/api/docs`.
+
+| Endpoint | Acceso | Entrada | Éxito | Errores |
+| --- | --- | --- | --- | --- |
+| `GET /health` | Público | — | 200 `{"status":"ok"}` | — |
+| `POST /auth/register` | Público | `name`, `email`, `password` | 201 usuario público con rol USER | 400, 409 |
+| `POST /auth/login` | Público | `email`, `password` | 200 `accessToken`, `tokenType`, `expiresIn` | 400, 401 |
+| `POST /auth/logout` | Autenticado | — | 204 sin cuerpo | 401 |
+| `GET /users/me` | Autenticado | — | 200 perfil | 401, 404 |
+| `PATCH /users/me` | Autenticado | `name` y/o `email` (al menos uno) | 200 perfil actualizado | 400, 401, 409 |
+| `GET /users` | ADMIN | query `page`, `limit` | 200 página de usuarios | 400, 401, 403 |
+| `PATCH /users/:id/role` | ADMIN | `id` UUID; cuerpo `role` | 200 usuario con el nuevo rol | 400, 401, 403, 404, 409 |
+| `POST /tasks` | Autenticado | `title`; opcionales `description`, `status`, `priority`, `dueDate` | 201 tarea propia | 400, 401 |
+| `GET /tasks` | Autenticado | query `status`, `priority`, `page`, `limit` | 200 página de tareas propias | 400, 401 |
+| `GET /tasks/:id` | Propietario | `id` UUID | 200 detalle | 400, 401, 404 |
+| `PATCH /tasks/:id` | Propietario | `id` UUID; al menos un campo de la tarea | 200 tarea actualizada | 400, 401, 404 |
+| `DELETE /tasks/:id` | Propietario | `id` UUID | 204 sin cuerpo | 400, 401, 404 |
+| `GET /admin/tasks` | ADMIN | query `page`, `limit` | 200 todas las tareas con `user` (`id`, `name`, `email`) | 400, 401, 403 |
+
+**Reglas de validación de las entradas**
+
+| Campo | Regla |
 | --- | --- |
-| Unitarias | 87 pruebas, 11 suites aprobadas |
-| E2E | 47 pruebas: 18 Auth y 29 Tasks aprobadas |
-| Lint y build | Correctos |
-| Cobertura statements | 95.93% |
-| Cobertura branches | 87.82% |
-| Cobertura functions | 89.28% |
-| Cobertura lines | 96.82% |
+| `name` | 2 a 100 caracteres, sin espacios externos |
+| `email` | Formato válido, en minúsculas y sin espacios externos |
+| `password` | 8 a 128 caracteres; nunca se almacena ni se devuelve |
+| `title` | 1 a 120 caracteres después de recortar espacios |
+| `description` | Máximo 1.000 caracteres; acepta `null` para borrarla |
+| `status` | `PENDING` (por defecto), `IN_PROGRESS` o `COMPLETED` |
+| `priority` | `LOW`, `MEDIUM` (por defecto) o `HIGH` |
+| `dueDate` | Fecha ISO 8601 válida; acepta `null` |
+| `role` | `USER` o `ADMIN` |
+| `page`, `limit` | Enteros positivos; `page=1` y `limit=10` por defecto; `limit` máximo 100 |
+| Cualquier otro campo | Rechazado con 400 (`forbidNonWhitelisted`), incluidos `userId` y `role` en tareas y perfil |
 
-Jest exige 80% global en las cuatro métricas y falla si no encuentra pruebas. La cobertura es unitaria y conserva las exclusiones existentes de arranque, módulos, configuración y scripts de base de datos; estos se verifican mediante integración y ejecución del seed. CI aplica migraciones antes de E2E y ejecuta lint, unitarias, E2E, cobertura y build. La ejecución remota de Actions sigue pendiente hasta publicar la rama.
+**Formato de las respuestas**
 
-### 5.4 Escenarios Postman de Tasks
+- Los listados devuelven `{ items, total, page, limit }`, ordenados del más reciente al más antiguo.
+- Una tarea incluye `id`, `title`, `description`, `status`, `priority`, `dueDate`, `userId`, `createdAt` y `updatedAt`.
+- Un usuario público incluye `id`, `name`, `email`, `role`, `createdAt` y `updatedAt`.
 
-La colección parcial Tasks/Health contiene 44 peticiones con verificaciones de estado y contenido: preparación de dos propietarios, login ADMIN, CRUD, filtros individuales y combinados, paginación, campos anulables, datos inválidos, propiedad y respuestas administrativas sin campos sensibles. El cierre elimina las tres tareas de prueba y revoca las sesiones USER. Las cuentas de prueba permanecen; se usa una base desechable.
+**Errores.** Todas las respuestas de error usan la estructura estándar de NestJS, con `statusCode` y `message`, sin trazas ni SQL.
 
-El generador integra las colecciones originales de Auth (18 peticiones) y Users (35) con Tasks (44): 97 peticiones para los 14 endpoints requeridos. Cada responsable mantiene su archivo; el JSON integrado no se edita directamente. CI valida la composición y ejecuta Tasks con Newman tras preparar PostgreSQL y el seed.
+| Código | Cuándo se devuelve |
+| --- | --- |
+| 400 | Cuerpo o parámetros inválidos, campos adicionales, UUID mal formado, `PATCH` vacío |
+| 401 | Token ausente, mal formado, vencido o revocado; credenciales incorrectas |
+| 403 | Rol insuficiente (USER en una ruta de ADMIN) |
+| 404 | Usuario o tarea inexistente, o tarea de otro usuario |
+| 409 | Correo duplicado; intento de quitar el rol al último ADMIN |
 
-## 6. Persistencia y despliegue
+## 5. Persistencia
 
-El repositorio contiene migraciones para `users` y `tasks`; la tabla de tareas referencia `users` con eliminación en cascada. PostgreSQL 17 se levanta con Docker Compose y volumen persistente. La configuración se obtiene de `.env`, que no se versiona. Se verificaron las migraciones sobre una base vacía y la creación de la extensión `uuid-ossp` por TypeORM.
+El modelo tiene dos tablas con una relación 1:N: un usuario puede tener varias tareas y cada tarea pertenece a un solo usuario. El esquema se crea con dos migrations, `CreateUsers` y `CreateTasks`; `synchronize` y `migrationsRun` están desactivados.
 
-El seed del Integrante 1 se ejecuta con `npm run seed`, usando `SEED_ADMIN_PASSWORD` y `SEED_USER_PASSWORD`. En la verificación local creó un ADMIN, dos USER y seis tareas. Una segunda ejecución agregó cero registros; se validaron los hashes con bcrypt y los tres usuarios/seis tareas sobrevivieron al reinicio del contenedor PostgreSQL.
+| Tabla | Campos | Restricciones |
+| --- | --- | --- |
+| `users` | `id` (UUID), `name`, `email`, `passwordHash`, `role`, `tokenVersion`, `createdAt`, `updatedAt` | `email` único; `name` de 2 a 100 caracteres (CHECK); `role` enum USER/ADMIN con valor inicial USER; `tokenVersion` entero con valor inicial 0 |
+| `tasks` | `id` (UUID), `title`, `description`, `status`, `priority`, `dueDate`, `userId`, `createdAt`, `updatedAt` | Clave foránea `userId` hacia `users` con `ON DELETE CASCADE`; `title` de 1 a 120 caracteres tras recortar (CHECK); enums de estado y prioridad con valores iniciales PENDING y MEDIUM; índices en `userId`, `status` y `priority` |
 
-La API está desplegada en Railway: https://compunet3-pandas-backendnestjs-production.up.railway.app, con Swagger en /api/docs. El 12 de octubre se verificó HTTPS, salud 200, Swagger 200, 14 operaciones en OpenAPI y rechazo 401 de Tasks/perfil sin JWT. Son comprobaciones públicas de lectura; no sustituyen pruebas autenticadas en producción.
+- **Fechas.** Todas las marcas de tiempo son `timestamptz`.
+- **Extensión requerida.** Los identificadores usan `uuid_generate_v4()`, así que una base nueva necesita la extensión `uuid-ossp`.
+- **Conexión.** TypeORM reintenta la conexión 5 veces, con 2 segundos entre intentos.
 
-Arquitectura: cliente → HTTPS Railway → NestJS → PostgreSQL. El responsable confirmó main y Wait for CI activado. El predeploy ejecuta migrations compiladas y seed; los errores bloquean el despliegue. Nest no vuelve a aplicar migrations al iniciar cada réplica. Variables y secretos se configuran fuera del repositorio. DEPLOYMENT.md detalla configuración, flujo y evidencia pendiente del volumen persistente, SHA desplegado y Actions.
+**Seed (`npm run seed`).** Crea el administrador `admin@taskflow.com`, dos usuarios (`user1@taskflow.com` y `user2@taskflow.com`) y seis tareas repartidas entre los tres. Las contraseñas llegan por `SEED_ADMIN_PASSWORD` y `SEED_USER_PASSWORD` (mínimo 8 caracteres) y se guardan como hash bcrypt. Es repetible: busca cada usuario por correo y cada tarea por propietario y título, y solo inserta lo que falta, todo dentro de una transacción. En Railway, el comando previo al despliegue ejecuta las migrations y luego el seed.
 
-## 7. Pendientes antes de entregar
+## 6. Pruebas y cobertura
 
-- Reemplazar los marcadores del equipo por nombres y perfiles reales.
-- Completar y revisar la sección de Auth con su responsable.
-- Registrar evidencia del volumen PostgreSQL y del commit desplegado después de CI; verificar login y CRUD autenticados en nube.
-- Adjuntar el enlace de GitHub Actions aprobado para el commit final.
-- Hacer una revisión final del informe contra la rúbrica y la versión exacta integrada en `develop`.
+En la verificación local del 12 de octubre de 2026 pasaron las 87 pruebas unitarias y las 47 E2E, con una cobertura unitaria por encima del umbral de 80% en las cuatro métricas; lint y build también terminaron sin errores.
 
-Verificación local del 12 de octubre de 2026: Tasks aprobó 44 peticiones y 76 aserciones. La colección integrada también aprobó sus 97 elementos, 112 solicitudes HTTP (incluidas las llamadas auxiliares de scripts) y 201 aserciones, sin fallos, sobre PostgreSQL de pruebas. Esta ejecución no acredita los mismos resultados en Railway.
+| Métrica de cobertura unitaria | Resultado | Umbral exigido |
+| --- | --- | --- |
+| Statements | 95,93% | 80% |
+| Branches | 87,82% | 80% |
+| Functions | 89,28% | 80% |
+| Lines | 96,82% | 80% |
+
+Jest falla si alguna métrica global baja de 80%. Se excluyen del cálculo los módulos, el arranque, la configuración y los scripts de base de datos: el montaje de Nest y las migrations se verifican con las pruebas E2E y el seed por ejecución repetida sobre PostgreSQL. La cifra corresponde solo a cobertura unitaria, no a una combinación con E2E.
+
+**Tipos de prueba**
+
+| Tipo | Herramienta | Alcance | Resultado |
+| --- | --- | --- | --- |
+| Unitarias | Jest | Servicios, controladores, guards, estrategia JWT y DTO de Auth, Users y Tasks | 87 aprobadas |
+| E2E de Auth | Jest y Supertest, PostgreSQL real | Registro, login, rutas protegidas, logout y cambio de rol | 18 aprobadas |
+| E2E de Tasks | Jest y Supertest, PostgreSQL real | CRUD, propiedad, filtros, paginación, validación, ADMIN, persistencia y clave foránea | 29 aprobadas |
+| Colección Tasks | Newman | Escenarios positivos y negativos de Tasks y Health | 44 peticiones, 76 aserciones, sin fallos |
+| Colección integrada | Postman y Newman | Auth, Users, Tasks y Health sobre los 14 endpoints | 122 peticiones tras ampliar Auth; la ejecución completa de esta versión está pendiente (la última ejecución registrada, de 97 elementos, 112 solicitudes HTTP y 201 aserciones sin fallos, es anterior a esa ampliación) |
+
+Las pruebas E2E usan una base separada, `nest_backend_test` por defecto, cuyo nombre debe terminar en `_test`; la suite limpia el esquema y aplica las migrations antes de empezar, y se ejecutan en serie porque comparten esa base.
+
+**Casos de aceptación del enunciado y dónde se prueban**
+
+| Área | Caso | Evidencia |
+| --- | --- | --- |
+| Autenticación | Registro y correo duplicado; login válido e inválido; JWT ausente, vencido y revocado; logout impide reutilizar el token | E2E de Auth |
+| Autorización | USER recibe 403 en rutas ADMIN; ADMIN cambia un rol; el cambio aplica sin nuevo login | Pruebas unitarias, E2E de Auth (cambio de rol con token ya emitido) y colección de Users |
+| Autorización | Proteger al último ADMIN | Pruebas unitarias y colección de Users, que ejecuta el caso solo si existe un único ADMIN |
+| Tareas | CRUD completo, acceso ajeno con 404, filtros, paginación, entradas inválidas y `userId` rechazado | E2E de Tasks y colección de Tasks |
+| Persistencia | Migrations sobre base vacía; datos que sobreviven al reinicio; restricción única y clave foránea | E2E de Auth y Tasks (migrations al iniciar la suite, reinicio de Nest, 409 por correo duplicado, borrado en cascada) |
+| Persistencia | Seed repetible | Ejecución repetida del seed sobre PostgreSQL |
+
+**Cómo reproducir**
+
+```bash
+npm run lint
+npm test -- --runInBand
+npm run test:e2e -- --runInBand
+npm run test:cov -- --runInBand
+npm run build
+npm run postman:build
+npm run postman:tasks
+```
+
+## 7. Despliegue, CI y organización del equipo
+
+### 7.1 Despliegue
+
+La API se despliega en Railway desde la rama `main`, con la opción *Wait for CI* activa. Antes de arrancar, `railway.json` ejecuta `railway:predeploy`, que aplica las migraciones (`migration:run:prod`) y el seed (`seed:prod`). Luego inicia `start:prod` y Railway comprueba la salud en `/api/health`. El servicio se expone por HTTPS.
+
+- API: https://compunet3-pandas-backendnestjs-production.up.railway.app
+- Salud: `/api/health`
+- Swagger: `/api/docs`
+
+### 7.2 Control de versiones e integración continua
+
+- Ramas: `main` (estable), `develop` (integración) y ramas `feature/*`, `fix/*` y `docs/*` que se fusionan por pull request.
+- Husky ejecuta verificaciones locales antes de confirmar cambios.
+- GitHub Actions está configurado para ejecutar lint, pruebas unitarias, E2E, cobertura, build y Newman.
+- **Estado de la validación:** la ejecución de GitHub Actions estaba pendiente de confirmarse al cerrar este informe, porque dependía de publicar la rama. Los resultados de la sección 6 provienen de una ejecución local del 2026-10-12.
+
+### 7.3 Organización del equipo
+
+| Integrante | Responsabilidad |
+| --- | --- |
+| Integrante 1 | Autenticación (registro, login, logout, `/me`) |
+| Integrante 2 | Usuarios y roles (listado, detalle, cambio de rol) |
+| Integrante 3 | Tareas (CRUD propio y listado administrativo) |
+
+Los nombres y usuarios de GitHub se detallan en la sección 1.
+
+### 7.4 Limitaciones
+
+- El caso de Postman del último ADMIN solo se ejecuta cuando existe exactamente un ADMIN; en otro caso se marca como «Omitido».
+- No hay archivo E2E para el módulo de Usuarios; su cobertura proviene de pruebas unitarias y de Postman.
+- No existe endpoint para eliminar cuentas de usuario.
+- Los resultados de Newman no están respaldados por un reporte almacenado en el repositorio.
+
+### 7.5 Trabajo futuro
+
+- Publicar el reporte de Newman y de cobertura como artefacto de CI.
+- Añadir pruebas E2E para Usuarios, incluida la protección del último ADMIN.
+- Separar el entorno de Postman local del de producción para no ejecutar escenarios que modifican roles contra datos reales.
